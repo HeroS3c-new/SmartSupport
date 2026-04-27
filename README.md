@@ -1,6 +1,6 @@
-# MaeSkimmer 🚀
+# SmartSupport 🚀
 
-MaeSkimmer è un'applicazione avanzata per la gestione intelligente delle email e l'automazione dei ticket su Redmine. Combina un backend Node.js, un server di classificazione Python basato su Machine Learning e una dashboard frontend moderna.
+SmartSupport è un'applicazione avanzata per la gestione intelligente delle email e l'automazione dei ticket su Redmine. Combina un backend Node.js, un server di classificazione Python basato su Machine Learning e una dashboard frontend moderna.
 
 ![Screenshot](Screenshot.png)
 

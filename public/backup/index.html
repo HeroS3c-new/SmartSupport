@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net 'unsafe-inline' https://unpkg.com; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; connect-src 'self' https://localhost:5001 https://127.0.0.1:5001 https://10.100.200.208:5001; img-src 'self' data:; frame-src https://calendar.google.com/">
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.0.0/dist/css/shepherd.css" />
+    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.0.0/dist/shepherd.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSupport</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <img src="mg_logo.png" alt="MaeSkimmer Logo" class="logo">
+                <h1>SmartSupport</h1>
+            </div>
+            <div class="header-controls">
+                <div class="gemini-settings">
+                    <input type="password" id="gemini-api-key" placeholder="Gemini API Key"
+                        class="form-control form-control-sm">
+                    <button id="evaluate-importance-btn" class="btn btn-sm btn-primary">Valuta Importanza</button>
+                </div>
+                <button id="login-button">Login with Google</button>
+                <button id="aiuto-button" class="btn btn-info">Aiuto</button>
+                <div class="theme-switch-wrapper">
+                    <div id="lightbulb">
+                        <i class="fa-regular fa-lightbulb"></i>
+                    </div>
+                </div>
+                <div id="llm-status" class="llm-status-indicator"></div>
+                <button id="toggle-calendar-panel" class="btn btn-info">🗓️ Calendario</button>
+                <button id="toggle-notes-panel" class="btn btn-info">📝 Note</button>
+        </header>
+
+        <div id="notes-panel" class="notes-panel">
+            <div class="notes-panel-header">
+                <h3>Note</h3>
+                <button id="close-notes-panel" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="notes-controls">
+                <select id="note-selector" class="form-select"></select>
+                <button id="new-note-button" class="btn btn-sm btn-success">+</button>
+                <button id="delete-note-button" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
+                <button id="save-note-button" class="btn btn-sm btn-primary" title="Salva nota"><i
+                        class="fa fa-save"></i></button>
+            </div>
+            <textarea id="note-content" class="note-content"
+                placeholder="Scrivi qui la tua nota in Markdown..."></textarea>
+        </div>
+
+        <div id="calendar-panel" class="calendar-panel">
+            <iframe src="https://calendar.google.com/calendar/embed?src=supporto%40maestrale.it&ctz=Europe%2FRome"
+                style="border: 0" width="100%" height="100%" frameborder="0" scrolling="no"></iframe>
+        </div>
+
+        <main>
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <span id="email-stats"></span>
+                    <div class="email-limit-selector">
+                        <label for="email-limit">Mostra:</label>
+                        <select id="email-limit">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                    <div class="auto-refresh-selector">
+                        <label for="auto-refresh">Refresh ogni:</label>
+                        <select id="auto-refresh">
+                            <option value="0">Mai</option>
+                            <option value="5">5s</option>
+                            <option value="30">30s</option>
+                            <option value="60">1m</option>
+                            <option value="300">5m</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="toolbar-group">
+                    <input type="checkbox" id="select-all-checkbox" />
+                    <label for="select-all-checkbox">Seleziona Tutto</label>
+                    <input type="checkbox" id="select-current-tab-checkbox" />
+                    <label for="select-current-tab-checkbox">Seleziona Tab Corrente</label>
+                    <input type="checkbox" id="select-useless-checkbox" />
+                    <label for="select-useless-checkbox">Seleziona Potenziali Inutili</label>
+                </div>
+                <div class="toolbar-group">
+                    <button id="sort-score-button" class="btn btn-secondary">Ordina per Importanza</button>
+                    <button id="sort-date-button" class="btn btn-secondary">Ordina per Data</button>
+                </div>
+                <div class="toolbar-group">
+                    <button id="mark-read-button" class="btn btn-primary">Segna come Lette</button>
+                </div>
+
+            </div>
+            <div class="tab-container">
+                <button id="human-tab" class="nav-link active">Human <span id="human-count"
+                        class="badge bg-secondary">0</span></button>
+                <button id="bot-tab" class="nav-link">Bot <span id="bot-count"
+                        class="badge bg-secondary">0</span></button>
+                <button id="show-pinned-emails" class="nav-link">Pinned</button>
+            </div>
+            <div id="human-view">
+                <div id="human-highlighted-emails-container"></div>
+                <div id="human-email-list-container"></div>
+            </div>
+            <div id="bot-view" style="display: none;">
+                <div id="bot-highlighted-emails-container"></div>
+                <div id="bot-email-list-container"></div>
+            </div>
+            <div id="pinned-view" style="display: none;">
+                <div id="pinned-emails-container"></div>
+            </div>
+            <div id="loading-spinner" class="spinner" style="display: none;"></div>
+            <span id="loading-message" style="display: none;"></span>
+            <div id="bot-email-list-container" style="display: none;"></div>
+        </main>
+    </div>
+
+    <div id="walkthrough-overlay" class="walkthrough-overlay"></div>
+    <div id="walkthrough-box" class="walkthrough-box">
+        <p id="walkthrough-text"></p>
+        <div class="walkthrough-navigation">
+            <button id="walkthrough-next" class="walkthrough-button">Next</button>
+            <button id="walkthrough-end" class="walkthrough-button">End</button>
+        </div>
+    </div>
+    <div id="log-panel" class="log-panel">
+        <div class="log-panel-header">
+            <h3>Logs</h3>
+            <button id="close-log-panel" class="btn btn-sm btn-danger">&times;</button>
+        </div>
+        <div class="log-controls">
+            <select id="log-file-selector" class="form-select"></select>
+            <button id="refresh-log-button" class="btn btn-primary">Refresh</button>
+        </div>
+        <div class="log-pagination">
+            <button id="log-prev-page" class="btn btn-secondary">&lt; Prev</button>
+            <span id="log-page-info"></span>
+            <button id="log-next-page" class="btn btn-secondary">Next &gt;</button>
+        </div>
+        <pre id="log-content" class="log-content"></pre>
+    </div>
+    <button id="open-log-panel" class="btn btn-info">Open Logs</button>
+
+    <!-- Reply Modal -->
+    <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="replyModalLabel">Respond to Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="reply-to" class="form-label">To:</label>
+                        <input type="text" class="form-control" id="reply-to" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reply-subject" class="form-label">Subject:</label>
+                        <input type="text" class="form-control" id="reply-subject" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reply-body" class="form-label">Message:</label>
+                        <textarea class="form-control" id="reply-body" rows="10"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="send-reply-btn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="full-email-modal" class="full-email-modal" style="display: none;">
+        <div class="full-email-content">
+            <div class="full-email-header">
+                <button id="close-full-email" class="btn btn-danger">&times;</button>
+            </div>
+            <div id="full-email-body" class="full-email-body"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

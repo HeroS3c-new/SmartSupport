@@ -1,0 +1,2037 @@
+/* ==========================================================================
+   TABLE OF CONTENTS
+   ==========================================================================
+   1. VARIABLES & CONFIG
+   2. GLOBAL & BASE STYLES
+   3. LAYOUT (Header, Container, Main)
+   4. COMPONENTS (Buttons, Toolbar, Tabs, View Switcher)
+   5. EMAIL SYSTEM (List Item, Content, Actions, Grouping)
+   6. VIEW MODES (Details, Compact, Cards)
+   7. PANELS & MODALS (Notes, Calendar, Logs, Full Email)
+   8. ONBOARDING (Walkthrough)
+   9. MISC (Status Indicators, Animations, Spinner)
+   10. RESPONSIVE DESIGN
+   ========================================================================== */
+
+/* ==========================================================================
+   1. VARIABLES & CONFIG
+   ========================================================================== */
+
+:root {
+    /* Colors */
+    --primary-color: #4A90E2;
+    --primary-hover-color: #357ABD;
+    --danger-color: #D0021B;
+    --danger-hover-color: #A00115;
+    --warning-color: #F5A623;
+    --warning-hover-color: #C4851C;
+    --success-color: #7ED321;
+
+    /* Surfaces & Text */
+    --background-color: #f7f8fc;
+    --surface-color: #ffffff;
+    --text-color: #4A4A4A;
+    --text-light-color: #9B9B9B;
+    --border-color: #EAEAEA;
+
+    /* Email State Variations */
+    --useless-email-bg: #f0fdf4;
+    --useless-email-border: var(--success-color);
+    --highlight-yellow-bg: #fffbeb;
+    --highlight-yellow-border: var(--warning-color);
+    --highlight-red-bg: #fff1f2;
+    --highlight-red-border: var(--danger-color);
+
+    /* Misc */
+    --font-family: 'Poppins', sans-serif;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --border-radius: 8px;
+    --transition: all 0.2s ease-in-out;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+    --primary-color: #5A9BEE;
+    --primary-hover-color: #7EBBFF;
+    --background-color: #121212;
+    --surface-color: #1E1E1E;
+    --text-color: #EAEAEA;
+    --text-light-color: #9B9B9B;
+    --border-color: #2C2C2C;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+    --useless-email-bg: #1A2B22;
+    --useless-email-border: #2E7D32;
+    --highlight-yellow-bg: #2E291C;
+    --highlight-yellow-border: #B8860B;
+    --highlight-red-bg: #2D1B1F;
+    --highlight-red-border: #D32F2F;
+}
+
+/* ==========================================================================
+   2. GLOBAL & BASE STYLES
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   3. LAYOUT
+   ========================================================================== */
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    /* Reduced from 1.5rem for compactness */
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-title img {
+    height: 40px;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Force FA icons font and display */
+.fa-solid,
+.fa-regular {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+}
+
+.fa-brands {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
+}
+
+i[class*="fa-"],
+.fa-solid,
+.fa-regular,
+.fa-brands {
+    display: inline-block !important;
+    font-style: normal !important;
+    font-variant: normal !important;
+    text-rendering: auto !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+
+main {
+    padding: 1.5rem 0;
+}
+
+/* ==========================================================================
+   4. COMPONENTS
+   ========================================================================== */
+
+/* Buttons */
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#login-button {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+#login-button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: var(--surface-color);
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-right: 1px solid var(--border-color);
+}
+
+.toolbar-group.flex-grow-1 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+}
+
+#email-stats {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.85rem;
+}
+
+.toolbar input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.toolbar label {
+    margin: 0 0.5rem 0 0.2rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.toolbar select {
+    padding: 0.4rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    font-size: 0.85rem;
+}
+
+.email-limit-selector,
+.refresh-control {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Search Bar */
+.search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light-color);
+    font-size: 0.9rem;
+}
+
+.search-wrapper input {
+    width: 100%;
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.search-wrapper input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+.flex-grow-1 {
+    flex-grow: 1;
+}
+
+/* Tabs */
+.tab-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background-color: var(--surface-color);
+    padding: 0.4rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.tab-container .nav-link {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-light-color);
+    transition: var(--transition);
+    text-align: center;
+}
+
+.tab-container .nav-link:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+    color: var(--primary-color);
+}
+
+.tab-container .nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 10px rgba(74, 144, 226, 0.4);
+}
+
+.tab-container .nav-link.active .badge {
+    background-color: white !important;
+    color: var(--primary-color) !important;
+}
+
+/* View Mode Switcher */
+.view-mode-switch {
+    display: inline-flex;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.view-mode-switch .view-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.view-mode-switch .view-btn+.view-btn {
+    border-left: 1px solid var(--border-color);
+}
+
+.view-mode-switch .view-btn.active {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.view-mode-switch .view-btn:not(.active):hover {
+    background-color: rgba(74, 144, 226, 0.05);
+}
+
+/* Category Filter */
+.category-filter-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.category-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--surface-color);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+.category-filter label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.category-filter select {
+    border: none;
+    background: transparent;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    cursor: pointer;
+    outline: none;
+}
+
+/* Theme & Settings */
+.gemini-settings {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem;
+    background-color: rgba(74, 144, 226, 0.05);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.gemini-settings input {
+    width: 140px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#gmail-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    min-height: 80vh;
+}
+
+/* ==========================================================================
+   5. EMAIL SYSTEM
+   ========================================================================== */
+
+/* List Container */
+#human-email-list-container ul,
+#bot-email-list-container ul,
+#pinned-emails-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Base Email Item */
+.email-item {
+    padding: 0.4rem 0.75rem;
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.email-item:hover {
+    background-color: var(--surface-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    z-index: 1;
+}
+
+/* States */
+.email-item.useless-email {
+    background-color: var(--useless-email-bg);
+    border-left: 4px solid var(--useless-email-border);
+}
+
+.email-item.highlight-red {
+    background-color: var(--highlight-red-bg);
+    border-left: 4px solid var(--highlight-red-border);
+}
+
+/* Layout Parts */
+.email-main-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.email-main-content input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    min-width: 32px;
+}
+
+.note-indicator-badge {
+    background-color: var(--warning-color);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    box-shadow: 0 0 8px rgba(245, 166, 35, 0.4);
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(245, 166, 35, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+    }
+}
+
+.email-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.email-details .from {
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-details .subject {
+    font-weight: 500;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.labels-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.label-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background-color: var(--border-color);
+    color: var(--text-light-color);
+    text-transform: uppercase;
+}
+
+.label-inbox {
+    background-color: rgba(74, 144, 226, 0.1);
+    color: var(--primary-color);
+}
+
+.label-important {
+    background-color: rgba(208, 2, 27, 0.1);
+    color: var(--danger-color);
+}
+
+.label-starred {
+    background-color: rgba(245, 166, 35, 0.1);
+    color: var(--warning-color);
+}
+
+.email-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    min-width: 110px;
+    flex-shrink: 0;
+}
+
+.email-meta .score {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.email-meta .date {
+    font-size: 0.75rem;
+    color: var(--text-light-color);
+}
+
+/* Actions in row */
+.reclassify-buttons,
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.reclassify-buttons button,
+.card-actions button {
+    padding: 0.2rem 0.4rem;
+    font-size: 1rem;
+    border-radius: 4px;
+}
+
+/* Inner Body & Snippet */
+.snippet {
+    color: var(--text-light-color);
+    margin: 0.2rem 0 0 2rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.body {
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    display: none;
+    /* Controlled by JS */
+}
+
+/* Grouping (Pair Box) */
+.pair-box {
+    background-color: var(--highlight-yellow-bg);
+    border-left: 5px solid var(--highlight-yellow-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pair-emoji {
+    font-size: 1.75rem;
+}
+
+.pair-content {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.pair-content h3 {
+    margin: 0 0 0.2rem 0;
+    font-size: 0.9rem;
+}
+
+.pair-content p {
+    margin: 0;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-light-color);
+}
+
+/* ==========================================================================
+   6. VIEW MODES
+   ========================================================================== */
+
+/* --- COMPACT MODE --- */
+.view-compact .email-item {
+    padding: 0.2rem 0.5rem;
+}
+
+#bot-view,
+#cloud-monitor-view,
+#pinned-view {
+    display: none;
+}
+
+/* Cloud Monitor Folder/File UI */
+.cloud-folder {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-card, #ffffff);
+}
+
+.cloud-folder-header {
+    background: var(--bg-secondary, #f8f9fa);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+}
+
+.cloud-folder-header:hover {
+    background: var(--bg-hover, #e9ecef);
+}
+
+.cloud-folder-header i {
+    color: #ffca28;
+    /* Folder yellow */
+    font-size: 1.2rem;
+}
+
+.cloud-folder-header.open i {
+    transform: rotate(10deg);
+}
+
+.cloud-files-container {
+    padding-left: 2rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.cloud-file {
+    border-bottom: 1px solid var(--border-color, #eee);
+}
+
+.cloud-file:last-child {
+    border-bottom: none;
+}
+
+.cloud-file-header {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    transition: background 0.1s;
+}
+
+.cloud-file-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.cloud-file-header i {
+    color: #3b82f6;
+    /* File blue */
+}
+
+.cloud-file-header .file-date {
+    color: #666;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+.cloud-file-header .file-subject {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cloud-file-details {
+    padding: 1rem;
+    background: var(--bg-offset, #fafafa);
+    font-size: 0.85rem;
+    border-left: 3px solid #3b82f6;
+    margin: 0 1rem 0.5rem 2.5rem;
+    border-radius: 4px;
+}
+
+.dark-mode .cloud-file-details {
+    background: #2a2a2a;
+}
+
+.detail-row {
+    margin-bottom: 0.4rem;
+}
+
+.status-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.status-ok {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-crit {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.detail-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.view-compact .from {
+    display: none;
+}
+
+.view-compact .snippet {
+    display: none;
+}
+
+.view-compact .subject {
+    font-size: 0.8rem;
+}
+
+/* --- DETAILS MODE --- */
+.view-details .subject {
+    white-space: normal;
+}
+
+/* --- CARDS MODE --- */
+.view-cards ul {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.view-cards .email-item {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.view-cards .email-main-content {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.view-cards .email-details {
+    width: 100%;
+}
+
+.view-cards .email-details .from,
+.view-cards .email-details .subject {
+    white-space: normal;
+}
+
+.view-cards .email-meta {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.view-cards .snippet {
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+/* ==========================================================================
+   7. PANELS & MODALS
+   ========================================================================== */
+
+/* Panels Shared */
+.notes-panel,
+.calendar-panel,
+.log-panel {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 450px;
+    height: 100vh;
+    background-color: var(--surface-color);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1050;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.notes-panel.open,
+.calendar-panel.open,
+.log-panel.open {
+    right: 0;
+}
+
+/* Logs specific */
+.log-content {
+    flex: 1;
+    background: #1e1e1e;
+    color: #dcdcdc;
+    padding: 1rem;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+#open-log-panel {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+}
+
+/* Notes specific */
+.note-content {
+    flex: 1;
+    margin-bottom: 1rem;
+}
+
+.EasyMDEContainer {
+    background: var(--background-color);
+}
+
+/* Modals & Overlays */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-window {
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    max-height: 90vh;
+    animation: modalAppear 0.3s ease-out;
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #ffffff
+        /*var(--primary-color);*/
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* Account Modal Specifics */
+.account-modal-window {
+    width: 450px;
+}
+
+.account-modal-window hr {
+    margin: 1.5rem 0;
+    opacity: 0.1;
+}
+
+.account-modal-window h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Full Email Modal (keep existing but adapt to generic classes if needed) */
+.full-email-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 99999;
+    pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.full-email-content {
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    max-height: 90vh;
+    animation: modalAppear 0.3s ease-out;
+    width: 90%;
+    max-width: 1100px;
+    height: 95vh;
+}
+
+.full-email-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.full-email-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* --- Email Notes --- */
+.email-notes-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.email-notes-section h4 {
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.email-notes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.email-note {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    position: relative;
+    transition: var(--transition);
+}
+
+.email-note:hover {
+    box-shadow: var(--shadow);
+}
+
+.email-note-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-light-color);
+}
+
+.email-note-user {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.email-note-content {
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.email-note-actions {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.email-note-reply-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    color: var(--primary-color);
+    background: none;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.email-note-reply-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Indentation for replies */
+.email-note.is-reply {
+    margin-left: 2rem;
+    border-left: 3px solid var(--primary-color);
+    background-color: rgba(74, 144, 226, 0.03);
+}
+
+.email-note-form {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.email-note-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.email-note-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.dark-mode .email-note.is-reply {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+/* ==========================================================================
+   8. ONBOARDING (Walkthrough)
+   ========================================================================== */
+
+.walkthrough-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    display: none;
+}
+
+.walkthrough-box {
+    position: absolute;
+    background: white;
+    padding: 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    max-width: 320px;
+    display: none;
+}
+
+body.dark-mode .walkthrough-box {
+    background: #34495e;
+    color: #ecf0f1;
+}
+
+.walkthrough-box::after {
+    content: "";
+    position: absolute;
+    border: 10px solid transparent;
+}
+
+.walkthrough-box[data-position="top"]::after {
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: inherit;
+}
+
+.walkthrough-box[data-position="bottom"]::after {
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: inherit;
+}
+
+.walkthrough-box[data-position="left"]::after {
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: inherit;
+}
+
+.walkthrough-box[data-position="right"]::after {
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: inherit;
+}
+
+/* ==========================================================================
+   9. MISC
+   ========================================================================== */
+
+.llm-status-indicator,
+.email-status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ccc;
+    /* Default grigio */
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.llm-status-indicator.operational,
+.email-status-indicator.operational {
+    background-color: #28a745;
+    /* Verde per OK */
+    box-shadow: 0 0 8px #28a745;
+}
+
+.llm-status-indicator.error,
+.email-status-indicator.error {
+    background-color: #dc3545;
+    /* Rosso per Errore */
+    box-shadow: 0 0 8px #dc3545;
+}
+
+/* Status Face UI */
+.status-face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    width: 60px;
+    transition: var(--transition);
+}
+
+.status-eyes {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.status-mouth {
+    width: 24px;
+    height: 12px;
+    border: 3px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 15px 15px;
+    transition: all 0.3s ease;
+}
+
+.status-mouth.happy {
+    border-color: #28a745;
+}
+
+.status-mouth.sad {
+    border-color: #dc3545;
+    transform: rotate(180deg) translateY(-4px);
+    border-radius: 0 0 15px 15px;
+    /* Turns into a frowny face when rotated */
+}
+
+.dark-mode .status-face {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 0.8s linear infinite;
+    margin: 2rem auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Marking as Read Animation */
+.email-item.marking-as-read::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: slide 1s infinite;
+}
+
+@keyframes slide {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(100%);
+    }
+}
+
+/* ==========================================================================
+   10. RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .toolbar-group {
+        border-right: none;
+        padding: 0.5rem;
+    }
+
+    .notes-panel,
+    .calendar-panel,
+    .log-panel {
+        width: 100%;
+        right: -100%;
+    }
+}
+
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .header-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* Redmine Modal & Button Styles */
+.redmine-modal-window {
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.btn-redmine {
+    background-color: #628db6;
+    color: white;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.btn-redmine:hover {
+    background-color: #507394;
+    color: white;
+}
+
+/* Notification Modal Styles */
+#ticket-notification-modal {
+    z-index: 100001;
+    /* Above full-email-modal */
+}
+
+.notification-modal-window {
+    max-width: 600px;
+    width: 90%;
+    border-radius: 12px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    pointer-events: auto !important;
+}
+
+.notification-modal-window .modal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover-color));
+    color: white;
+    padding: 1.25rem;
+}
+
+.notification-modal-window .modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.notification-modal-window .form-control {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+    transition: var(--transition);
+}
+
+.notification-modal-window .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.email-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.redmine-list-button {
+    font-size: 0.85rem !important;
+    padding: 2px 6px !important;
+}
+
+.create-redmine-cloud {
+    margin-left: 0.5rem;
+}
+
+/* ==========================================================================
+   11. CHAT SYSTEM
+   ========================================================================== */
+
+.chat-container {
+    display: flex;
+    height: 70vh;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.chat-sidebar {
+    width: 300px;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    background: rgba(74, 144, 226, 0.03);
+    /* Subtle glassmorphism base */
+}
+
+.chat-sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.chat-sidebar-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.chat-spaces-list {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.chat-space-item {
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.chat-space-item:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.chat-space-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.chat-space-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background-color);
+}
+
+.chat-messages-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+}
+
+#active-chat-name {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.chat-messages-container {
+    flex-grow: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.message-mine {
+    align-self: flex-end;
+    background-color: var(--primary-color);
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+.message-others {
+    align-self: flex-start;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 2px;
+}
+
+.message-sender {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    opacity: 0.8;
+}
+
+.message-time {
+    font-size: 0.65rem;
+    margin-top: 0.25rem;
+    text-align: right;
+    display: block;
+    opacity: 0.7;
+}
+
+.chat-input-area {
+    padding: 1rem 1.5rem;
+    background-color: var(--surface-color);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+#chat-message-input {
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.6rem 1rem;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    max-height: 100px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+#chat-message-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+#send-chat-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+/* Dark Mode Chat */
+body.dark-mode .chat-sidebar {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.dark-mode .message-others {
+    background-color: #2C2C2C;
+    border-color: #3C3C3C;
+}
+
+body.dark-mode #chat-message-input {
+    background-color: #121212;
+}
+
+/* --- Draggable Chat Panel --- */
+.chat-panel {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    width: 400px;
+    height: 600px;
+    min-width: 300px;
+    min-height: 400px;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    resize: both;
+    overflow: hidden;
+}
+
+.chat-panel-header {
+    padding: 1rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    /* Draggable handle */
+}
+
+.chat-panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.chat-panel .chat-container {
+    border: none;
+    flex: 1;
+    height: auto;
+    border-bottom-left-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+    box-shadow: none;
+}
+
+.chat-panel .chat-sidebar {
+    width: 150px;
+    /* Reduced width for floating panel */
+}
+
+/* --- Notifications --- */
+.chat-notifications-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    /* Let clicks pass through */
+}
+
+.chat-notification {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-left: 4px solid var(--primary-color);
+    pointer-events: auto;
+    /* Re-enable clicks for notifications */
+    animation: slideInRight 0.3s ease-out forwards;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+    max-width: 300px;
+}
+
+.chat-notification.fade-out {
+    opacity: 0;
+}
+
+.chat-notification-header {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    color: var(--primary-color);
+}
+
+.chat-notification-body {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* --- Chat Attachments --- */
+.chat-image-container {
+    margin-top: 0.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.chat-image {
+    display: block;
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.chat-image:hover {
+    transform: scale(1.02);
+}
+
+.chat-file-attachment,
+.chat-drive-attachment {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.dark-mode .chat-file-attachment,
+.dark-mode .chat-drive-attachment {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-file-attachment i,
+.chat-drive-attachment i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.chat-file-attachment a,
+.chat-drive-attachment a {
+    color: inherit;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.chat-file-attachment a:hover,
+.chat-drive-attachment a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   11. STICKY NOTES
+   ========================================================================== */
+
+.sticky-notes-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    min-height: 100px;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.sticky-note {
+    width: 260px;
+    min-height: 200px;
+    padding: 1.5rem;
+    position: relative;
+    border-radius: 2px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', sans-serif;
+    animation: note-appear 0.5s ease-out;
+}
+
+@keyframes note-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.sticky-note:hover {
+    transform: scale(1.05) translateY(-5px) !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+/* Deterministic Colors (Post-it style) */
+.note-color-0 {
+    background-color: #fff9c4;
+    border-bottom: 2px solid #fbc02d;
+}
+
+.note-color-1 {
+    background-color: #ffecb3;
+    border-bottom: 2px solid #ffa000;
+}
+
+.note-color-2 {
+    background-color: #ffe0b2;
+    border-bottom: 2px solid #f57c00;
+}
+
+.note-color-3 {
+    background-color: #f8bbd0;
+    border-bottom: 2px solid #c2185b;
+}
+
+.note-color-4 {
+    background-color: #e1f5fe;
+    border-bottom: 2px solid #0288d1;
+}
+
+.note-color-5 {
+    background-color: #e8f5e9;
+    border-bottom: 2px solid #388e3c;
+}
+
+.sticky-note .note-pin {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.3;
+    transition: opacity 0.2s, transform 0.2s;
+    color: #333;
+}
+
+.sticky-note:hover .note-pin {
+    opacity: 1;
+}
+
+.sticky-note .note-pin:hover {
+    transform: scale(1.2);
+    color: var(--danger-color);
+}
+
+.sticky-note .note-subject {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: #333;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.sticky-note .note-from {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sticky-note .note-preview {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.7);
+    margin-bottom: 1rem;
+    flex-grow: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.sticky-note .note-date {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.4);
+    text-align: right;
+    margin-top: auto;
+}
+
+/* Redmine Manual Ticket Button */
+.btn-assign-l1 {
+    background-color: #6c757d;
+    color: white;
+    font-size: 0.75rem !important;
+    padding: 2px 6px !important;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-assign-l1:hover {
+    background-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.btn-assign-l1.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.dark-mode .sticky-note {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .note-color-0 {
+    background-color: #4a4620;
+    color: #eee;
+    border-bottom: 2px solid #fbc02d;
+}
+
+.dark-mode .note-color-1 {
+    background-color: #4a3b1a;
+    color: #eee;
+    border-bottom: 2px solid #ffa000;
+}
+
+.dark-mode .note-color-2 {
+    background-color: #4a2d15;
+    color: #eee;
+    border-bottom: 2px solid #f57c00;
+}
+
+.dark-mode .note-color-3 {
+    background-color: #4a1e2f;
+    color: #eee;
+    border-bottom: 2px solid #c2185b;
+}
+
+.dark-mode .note-color-4 {
+    background-color: #1a3a4a;
+    color: #eee;
+    border-bottom: 2px solid #0288d1;
+}
+
+.dark-mode .note-color-5 {
+    background-color: #1e3a24;
+    color: #eee;
+    border-bottom: 2px solid #388e3c;
+}
+
+.dark-mode .sticky-note .note-subject,
+.dark-mode .sticky-note .note-preview {
+    color: #eee;
+}
+
+.dark-mode .sticky-note .note-from {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.dark-mode .sticky-note .note-date {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.dark-mode .sticky-note .note-pin {
+    color: #eee;
+}

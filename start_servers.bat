@@ -1,0 +1,2 @@
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& {Add-Type -AssemblyName Microsoft.VisualBasic; $choice = [Microsoft.VisualBasic.Interaction]::MsgBox('Scegli il server da avviare:', 'YesNoCancel,Question', 'Server Launcher'); if ($choice -eq 6) {Start-Process cmd -ArgumentList '/k node --expose-gc index.js --max-old-space-size=65536'} elseif ($choice -eq 7) {Start-Process cmd -ArgumentList '/k py prediction_server.py'} elseif ($choice -eq 2) {Start-Process cmd -ArgumentList '/k py -m mkdocs serve -a 0.0.0.0:8000'}}"

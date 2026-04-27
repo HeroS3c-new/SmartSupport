@@ -1,0 +1,10 @@
+flask
+Flask-Cors
+transformers
+torch
+pandas
+scikit-learn
+accelerate>=0.26.0
+bitsandbytes
+python-dotenv
+kagglehub[pandas-datasets]

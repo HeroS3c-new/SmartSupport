@@ -1,0 +1,73 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv
+env/
+requirements.txt.lock
+
+# Secret files
+.env
+token.json
+client_secret*.json
+kaggle.json
+certs/
+*.pem
+*.key
+*.pfx
+
+# Local data and caches
+email_cache.json
+email_cache.json.corrupt
+notes.json
+users.json
+email_dataset_cleaned.csv
+email_dataset_example.csv
+llm_training_data.csv
+llm_training_data_importance.csv
+bot_human_training_data.csv
+chat_out.txt
+test_out.txt
+out.json
+out_people.txt
+projects_list.txt
+test_persistence.txt
+
+# Trained models (large directories)
+fine_tuned_llm_model_*/
+
+# Logs
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scratch and test files
+scratch/
+test_*.js
+verify_*.js
+reproduce_*.js
+debug_*.py
+index copy.js
+token copy.json
+prediction_server copy.py
+pem.zip
+"Choose Server.ps1"
+dataset/
+docs/
+mkdocs.yml

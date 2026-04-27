@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SmartSupport</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--text);
+        }
+
+        .login-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #cbd5e1;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 1rem;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .login-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            display: none;
+            text-align: center;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="header">
+            <h1>SmartSupport</h1>
+            <p>Accedi per gestire le tue email</p>
+        </div>
+
+        <div id="error-box" class="error-message"></div>
+
+        <form id="login-form">
+            <div id="credentials-step">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required autocomplete="username"
+                        placeholder="Inserisci il tuo username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required autocomplete="current-password"
+                        placeholder="••••••••">
+                </div>
+                <button type="submit" class="login-btn">Accedi</button>
+            </div>
+
+            <div id="mfa-step" style="display: none;">
+                <div class="form-group">
+                    <label for="otp">Codice Authenticator</label>
+                    <input type="text" id="otp" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
+                        placeholder="123456">
+                </div>
+                <button type="button" id="verify-mfa-btn" class="login-btn">Verifica Codice</button>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="#" id="back-to-login"
+                        style="color: #94a3b8; text-decoration: none; font-size: 0.875rem;">Indietro</a>
+                </div>
+            </div>
+        </form>
+
+        <div class="footer">
+            &copy; 2026 Maestrale
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const errorBox = document.getElementById('error-box');
+        const credentialsStep = document.getElementById('credentials-step');
+        const mfaStep = document.getElementById('mfa-step');
+        const verifyMfaBtn = document.getElementById('verify-mfa-btn');
+        const backToLogin = document.getElementById('back-to-login');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            errorBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    if (data.mfa_required) {
+                        credentialsStep.style.display = 'none';
+                        mfaStep.style.display = 'block';
+                        document.getElementById('otp').focus();
+                    } else {
+                        window.location.href = '/';
+                    }
+                } else {
+                    errorBox.textContent = data.message || 'Login fallito.';
+                    errorBox.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorBox.textContent = 'Errore di connessione al server.';
+                errorBox.style.display = 'block';
+            }
+        });
+
+        verifyMfaBtn.addEventListener('click', async () => {
+            const otp = document.getElementById('otp').value;
+            errorBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/login/mfa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorBox.textContent = data.message || 'Codice non valido.';
+                    errorBox.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('MFA error:', error);
+                errorBox.textContent = 'Errore di connessione al server.';
+                errorBox.style.display = 'block';
+            }
+        });
+
+        backToLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            mfaStep.style.display = 'none';
+            credentialsStep.style.display = 'block';
+            errorBox.style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>

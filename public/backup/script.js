@@ -1,1378 +1,1506 @@
-function showTab(tabName) {
-    const humanView = document.getElementById('human-view');
-    const botView = document.getElementById('bot-view');
-    const pinnedView = document.getElementById('pinned-view');
-    const humanTab = document.getElementById('human-tab');
-    const botTab = document.getElementById('bot-tab');
-    const pinnedTab = document.getElementById('show-pinned-emails'); // This ID is still used in HTML
-
-    if (tabName === 'human') {
-        humanView.style.display = 'block';
-        botView.style.display = 'none';
-        pinnedView.style.display = 'none';
-        humanTab.classList.add('active');
-        botTab.classList.remove('active');
-        pinnedTab.classList.remove('active');
-    } else if (tabName === 'bot') {
-        humanView.style.display = 'none';
-        botView.style.display = 'block';
-        pinnedView.style.display = 'none';
-        humanTab.classList.remove('active');
-        botTab.classList.add('active');
-        pinnedTab.classList.remove('active');
-    } else if (tabName === 'pinned') {
-        humanView.style.display = 'none';
-        botView.style.display = 'none';
-        pinnedView.style.display = 'block';
-        humanTab.classList.remove('active');
-        botTab.classList.remove('active');
-        pinnedTab.classList.add('active');
-    }
-}
+/**
+ * SmartSupport - Backup Hub Interface Logic
+ * Handles real-time liveness statistics, CRUD configurations, Auto-Discovery scanning, 
+ * run history logs, and premium UI animations.
+ */
 
 document.addEventListener('DOMContentLoaded', () => {
-    const bulb = document.getElementById('lightbulb');
+    // -------------------------------------------------------------
+    // State Variables
+    // -------------------------------------------------------------
+    let backupSources = [];
+    let autoDiscoverySuggestions = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+    let discoverSearchQuery = '';
+    let discoverSortField = null;
+    let discoverSortDirection = 'asc';
+    let currentTheme = 'dark';
+    
+    // Bootstrap Modal & Offcanvas Instances
+    const sourceModalEl = document.getElementById('sourceModal');
+    const sourceModal = new bootstrap.Modal(sourceModalEl);
+    const runsOffcanvasEl = document.getElementById('runsOffcanvas');
+    const runsOffcanvas = new bootstrap.Offcanvas(runsOffcanvasEl);
+    const emailDetailModalEl = document.getElementById('emailDetailModal');
+    const emailDetailModal = new bootstrap.Modal(emailDetailModalEl);
+    const toastEl = document.getElementById('app-toast');
+    const appToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    
+    // Elements
     const body = document.body;
+    const themeSwitch = document.getElementById('theme-switch');
+    const sourcesTableBody = document.getElementById('sources-table-body');
+    const discoverTableBody = document.getElementById('discover-table-body');
+    const searchInput = document.getElementById('source-search-input');
+    const filterButtons = document.querySelectorAll('.btn-filter');
+    const sourceForm = document.getElementById('source-form');
+    const discoveryBadge = document.getElementById('discovery-badge');
+    const discoverTab = document.getElementById('discover-tab');
+    const trashBadge = document.getElementById('trash-badge');
+    const trashTab = document.getElementById('trash-tab');
+    const trashTableBody = document.getElementById('trash-table-body');
+    
+    // KPI Counters
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiOk = document.getElementById('kpi-ok');
+    const kpiWarning = document.getElementById('kpi-warning');
+    const kpiMissing = document.getElementById('kpi-missing');
+    const kpiFailed = document.getElementById('kpi-failed');
 
-    // Recupera tema salvato
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
+    // -------------------------------------------------------------
+    // Initialization & Theme Setup
+    // -------------------------------------------------------------
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    currentTheme = savedTheme;
+    if (currentTheme === 'dark') {
         body.classList.add('dark-mode');
-        bulb.classList.add('dark');
-        bulb.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    } else {
+        body.classList.remove('dark-mode');
     }
 
-    // Al click sulla lampadina
-    bulb.addEventListener('click', () => {
-        body.classList.toggle('dark-mode');
-        bulb.classList.toggle('dark');
-
+    themeSwitch.addEventListener('click', () => {
         if (body.classList.contains('dark-mode')) {
-            bulb.innerHTML = '<i class="fa-solid fa-moon"></i>'; // diventa luna
-            localStorage.setItem('theme', 'dark');
-        } else {
-            bulb.innerHTML = '<i class="fa-regular fa-lightbulb"></i>'; // diventa lampadina
+            body.classList.remove('dark-mode');
             localStorage.setItem('theme', 'light');
-        }
-    });
-
-
-    const selectAllCheckbox = document.getElementById('select-all-checkbox');
-    const selectCurrentTabCheckbox = document.getElementById('select-current-tab-checkbox');
-    const humanEmailListContainer = document.getElementById('human-email-list-container');
-    const botEmailListContainer = document.getElementById('bot-email-list-container');
-    const humanHighlightedEmailsContainer = document.getElementById('human-highlighted-emails-container');
-    const botHighlightedEmailsContainer = document.getElementById('bot-highlighted-emails-container');
-    const humanView = document.getElementById('human-view');
-    const botView = document.getElementById('bot-view');
-    const sortScoreButton = document.getElementById('sort-score-button');
-    const sortDateButton = document.getElementById('sort-date-button');
-    const markReadButton = document.getElementById('mark-read-button');
-    const loadingSpinner = document.getElementById('loading-spinner');
-    const selectUselessCheckbox = document.getElementById('select-useless-checkbox');
-    const emailStats = document.getElementById('email-stats');
-    const emailLimitSelect = document.getElementById('email-limit');
-    const autoRefreshSelect = document.getElementById('auto-refresh');
-    const loadingMessage = document.getElementById('loading-message');
-    const pinnedEmailsContainer = document.getElementById('pinned-emails-container');
-    const pinnedView = document.getElementById('pinned-view');
-
-    document.getElementById('human-tab').addEventListener('click', () => showTab('human'));
-    document.getElementById('bot-tab').addEventListener('click', () => showTab('bot'));
-    document.getElementById('show-pinned-emails').addEventListener('click', () => showTab('pinned'));
-
-    // Gemini API Key Persistence
-    const geminiApiKeyInput = document.getElementById('gemini-api-key');
-    const savedApiKey = localStorage.getItem('gemini_api_key');
-    if (savedApiKey) {
-        geminiApiKeyInput.value = savedApiKey;
-    }
-
-    geminiApiKeyInput.addEventListener('change', (e) => {
-        localStorage.setItem('gemini_api_key', e.target.value);
-    });
-
-    const evaluateImportanceBtn = document.getElementById('evaluate-importance-btn');
-    evaluateImportanceBtn.addEventListener('click', () => evaluateImportanceWithGemini());
-
-    let emails = [];
-    let pinnedEmails = [];
-    let refreshTimer = null;
-
-    document.getElementById('login-button').style.display = 'none';
-
-    selectAllCheckbox.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        const allCheckboxes = document.querySelectorAll('.email-item input[type="checkbox"], .pair-box input[type="checkbox"]');
-        allCheckboxes.forEach(checkbox => {
-            checkbox.checked = isChecked;
-            if (checkbox.closest('.pair-box')) {
-                const changeEvent = new Event('change');
-                checkbox.dispatchEvent(changeEvent);
-            }
-        });
-    });
-
-    selectCurrentTabCheckbox.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        const activeTab = document.querySelector('.nav-link.active').id;
-        let viewId;
-        if (activeTab === 'human-tab') {
-            viewId = 'human-view';
-        } else if (activeTab === 'bot-tab') {
-            viewId = 'bot-view';
-        } else if (activeTab === 'show-pinned-emails') {
-            viewId = 'pinned-view';
-        }
-
-        if (viewId) {
-            const view = document.getElementById(viewId);
-            const allCheckboxes = view.querySelectorAll('.email-item input[type="checkbox"], .pair-box input[type="checkbox"]');
-            allCheckboxes.forEach(checkbox => {
-                checkbox.checked = isChecked;
-                if (checkbox.closest('.pair-box')) {
-                    const changeEvent = new Event('change');
-                    checkbox.dispatchEvent(changeEvent);
-                }
-            });
-        }
-    });
-
-    selectUselessCheckbox.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        const emailItems = document.querySelectorAll('.email-item');
-        emailItems.forEach(item => {
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            if (isChecked) {
-                const emailId = item.dataset.id;
-                const email = emails.find(e => e.id === emailId);
-                const isLowScore = email && email.score <= 0.49;
-                checkbox.checked = isLowScore;
-            } else {
-                checkbox.checked = false;
-            }
-        });
-
-        // After setting individual email checkboxes, check pair-box checkboxes if any of their contained emails are selected
-        const pairBoxes = document.querySelectorAll('.pair-box');
-        pairBoxes.forEach(pairBox => {
-            const pairCheckbox = pairBox.querySelector('.pair-checkbox');
-            if (isChecked) {
-                const emailIdsInGroup = pairBox.dataset.emailIds.split(',');
-                const allEmailsInGroup = emails.filter(email => emailIdsInGroup.includes(email.id));
-                const allAreUseless = allEmailsInGroup.every(email => email.score <= 0.49);
-
-                pairCheckbox.checked = allAreUseless;
-                // If the pair-box checkbox is checked, dispatch a change event to ensure its internal logic runs
-                if (allAreUseless) {
-                    const changeEvent = new Event('change');
-                    pairCheckbox.dispatchEvent(changeEvent);
-                }
-            } else {
-                pairCheckbox.checked = false;
-                // Dispatch change event to uncheck all inner emails if the pairBox is unchecked
-                const changeEvent = new Event('change');
-                pairCheckbox.dispatchEvent(changeEvent);
-            }
-        });
-    });
-
-    sortScoreButton.addEventListener('click', () => {
-        emails.sort((a, b) => b.score - a.score);
-        rerenderEmails();
-    });
-
-    sortDateButton.addEventListener('click', () => {
-        emails.sort((a, b) => b.internalDate - a.internalDate);
-        rerenderEmails();
-    });
-
-    markReadButton.addEventListener('click', () => handleMarkAction('read'));
-
-
-
-    async function handleMarkAction(action) {
-        const selectedCheckboxes = document.querySelectorAll('.email-item input[type="checkbox"]:checked');
-        const emailIds = Array.from(selectedCheckboxes).map(cb => cb.closest('.email-item').dataset.id);
-
-        if (emailIds.length === 0) {
-            alert(`Seleziona almeno un'email.`);
-            return;
-        }
-
-        const emailsToSend = emails.filter(e => emailIds.includes(e.id));
-        let endpoint, body;
-
-        switch (action) {
-            case 'read':
-                endpoint = '/api/mark-as-read';
-                body = { emailIds: emailIds };
-                break;
-            default:
-                return;
-        }
-
-        // Add animation class to selected emails
-        selectedCheckboxes.forEach(cb => {
-            const emailItem = cb.closest('.email-item');
-            if (emailItem) {
-                emailItem.classList.add('marking-as-read');
-            }
-        });
-
-        loadingSpinner.style.display = 'block';
-        try {
-            let response;
-            let success = false;
-            for (let i = 0; i < 3; i++) {
-                response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                if (response.ok) {
-                    success = true;
-                    break;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
-            }
-
-            if (!success) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            alert(result.message || `Azione completata con successo.`);
-            if (action === 'read') {
-                fetchAndDisplayEmails();
-            }
-        } catch (error) {
-            console.error(`Error marking emails as ${action}:`, error);
-            alert(`Errore durante l'operazione. Controlla la console.`);
-        } finally {
-            loadingSpinner.style.display = 'none';
-        }
-    }
-
-    async function reclassifyEmail(emailId, newCategory) {
-        const email = emails.find(e => e.id === emailId);
-        if (!email) return;
-
-        try {
-            const response = await fetch('/api/reclassify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, newCategory })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            email.category = newCategory;
-
-            rerenderEmails();
-
-        } catch (error) {
-            console.error('Error reclassifying email:', error);
-            alert('Errore durante la riclassificazione dell\'email. Controlla la console per i dettagli.');
-        }
-    }
-
-    async function evaluateImportanceWithGemini() {
-        const apiKey = document.getElementById('gemini-api-key').value;
-        if (!apiKey) {
-            alert("Inserisci l'API Key di Gemini.");
-            return;
-        }
-
-        if (emails.length === 0) {
-            alert("Nessuna email da valutare.");
-            return;
-        }
-
-        const emailIds = emails.map(e => e.id);
-
-        loadingSpinner.style.display = 'block';
-        loadingMessage.style.display = 'block';
-        loadingMessage.textContent = `Valutazione importanza con Gemini in corso per ${emailIds.length} email...`;
-
-        try {
-            const response = await fetch('/api/evaluate-importance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey, emailIds })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            alert(result.message);
-
-            // Aggiorna l'array locale delle email con i nuovi punteggi
-            if (result.emails) {
-                result.emails.forEach(updatedEmail => {
-                    const index = emails.findIndex(e => e.id === updatedEmail.id);
-                    if (index !== -1) {
-                        emails[index].score = updatedEmail.score;
-                    }
-                });
-            }
-
-            rerenderEmails();
-
-        } catch (error) {
-            console.error('Error evaluating importance with Gemini:', error);
-            alert(`Errore durante la valutazione: ${error.message}`);
-        } finally {
-            loadingSpinner.style.display = 'none';
-            loadingMessage.style.display = 'none';
-            loadingMessage.textContent = '';
-        }
-    }
-
-    async function fetchAndDisplayEmails() {
-        loadingSpinner.style.display = 'block';
-        loadingMessage.style.display = 'block';
-        loadingMessage.textContent = 'Sto scaricando le email dal server...';
-        humanEmailListContainer.innerHTML = '';
-        botEmailListContainer.innerHTML = '';
-        humanHighlightedEmailsContainer.innerHTML = '';
-        botHighlightedEmailsContainer.innerHTML = '';
-
-        const limit = emailLimitSelect.value; // Get the selected limit
-        let errorOccurred = false;
-
-        try {
-            const response = await fetch(`/api/emails?limit=${limit}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            emails = data.emails;
-            loadingMessage.textContent = `Scaricamento completato. Analizzando ${emails.length} email con l\'LLM...`;
-            rerenderEmails();
-
-        } catch (error) {
-            console.error('Error fetching emails:', error);
-            alert('Si è verificato un errore durante il recupero delle email. Controlla la console per i dettagli.');
-            humanEmailListContainer.innerHTML = '<p>Errore nel reperire le email. Controlla la console per errori.</p>';
-            loadingMessage.textContent = 'Errore durante il caricamento delle email.';
-            errorOccurred = true;
-        } finally {
-            loadingSpinner.style.display = 'none';
-            if (!errorOccurred) { // Only hide and clear message if no error occurred
-                loadingMessage.style.display = 'none';
-                loadingMessage.textContent = '';
-            }
-        }
-    }
-
-    function rerenderEmails() {
-        const humanEmails = emails.filter(e => e.category === 'Human');
-        const botEmails = emails.filter(e => e.category === 'Bot');
-
-        emailStats.textContent = `Email non lette: ${emails.length} (Human: ${humanEmails.length}, Bot: ${botEmails.length})`
-
-        document.getElementById('human-count').textContent = humanEmails.length;
-        document.getElementById('bot-count').textContent = botEmails.length;
-
-        displayEmails(humanEmails, humanEmailListContainer, humanHighlightedEmailsContainer, false);
-        displayEmails(botEmails, botEmailListContainer, botHighlightedEmailsContainer, true);
-        displayEmails(pinnedEmails, pinnedEmailsContainer, null, false);
-    }
-
-    function findEmailGroups(emailsToDisplay) {
-        const groups = {};
-        const processedIds = new Set();
-        const problemMap = {}; // Key: problemIdentifier, Value: array of emails
-
-        emailsToDisplay.forEach(email => {
-            const subject = email.subject;
-            let problemIdentifier = null;
-            const states = [];
-
-            // Regex for state changes, e.g., "host/service OK -> CRIT"
-            const changeMatch = subject.match(/^(.*?)[\s\-\/]+(UP|DOWN|OK|WARN|CRIT|UNKNOWN|PENDING)\b\s*->\s*(UP|DOWN|OK|WARN|CRIT|UNKNOWN|PENDING)\b/i);
-            if (changeMatch) {
-                problemIdentifier = changeMatch[1].trim();
-                // In a change email, both states are relevant for grouping logic
-                states.push(changeMatch[2].toUpperCase(), changeMatch[3].toUpperCase());
-            } else {
-                // Regex for single state, e.g., "host/service is CRIT" or "IPsec tunnel is down"
-                const singleStateMatch = subject.match(/^(.*?)(?:\s+is)?\s+(UP|DOWN|OK|WARN|CRIT|UNKNOWN|PENDING)\b/i);
-                if (singleStateMatch) {
-                    problemIdentifier = singleStateMatch[1].trim();
-                    states.push(singleStateMatch[2].toUpperCase());
-                }
-            }
-
-            if (problemIdentifier) {
-                // Clean up identifier to make it more consistent
-                problemIdentifier = problemIdentifier.replace(/^(check_mk:|\s*)/i, '').replace(/[\s\-\/]+$/, '').trim();
-
-                if (!problemMap[problemIdentifier]) {
-                    problemMap[problemIdentifier] = [];
-                }
-                // Pass the whole email and its detected states to the map
-                problemMap[problemIdentifier].push({ email, states });
-            }
-        });
-
-        // 2. Create groups for problems that show recovery (e.g., go from CRIT to OK)
-        Object.entries(problemMap).forEach(([problemId, emailArr]) => {
-            // A group needs at least two emails to show a change/recovery.
-            if (emailArr.length < 2) return;
-
-            const allStates = emailArr.flatMap(e => e.states);
-            const hasProblemState = allStates.some(s => ['WARN', 'CRIT', 'UNKNOWN', 'DOWN'].includes(s));
-            const hasOkState = allStates.some(s => ['OK', 'UP'].includes(s));
-
-            // Group if there's evidence of a problem AND a recovery.
-            if (hasProblemState && hasOkState) {
-                const groupKey = problemId;
-                if (!groups[groupKey]) {
-                    groups[groupKey] = [];
-                }
-                emailArr.forEach(e => {
-                    // Add email to the group if it hasn't been processed yet.
-                    if (!processedIds.has(e.email.id)) {
-                        groups[groupKey].push(e.email);
-                        processedIds.add(e.email.id);
-                    }
-                });
-            }
-        });
-
-        return { groups, processedIds };
-    }
-
-    function createEmailElement(email) {
-        const listItem = document.createElement('li');
-        listItem.dataset.id = email.id;
-        listItem.classList.add('email-item');
-
-        if (email.score * 100 > 70) {
-            listItem.classList.add('highlight-red');
-        }
-
-        if (email.category === 'Bot') {
-            listItem.classList.add('useless-email');
-        }
-
-        const mainContent = document.createElement('div');
-        mainContent.className = 'email-main-content';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.addEventListener('click', e => e.stopPropagation());
-        mainContent.appendChild(checkbox);
-
-        const emailDetails = document.createElement('div');
-        emailDetails.className = 'email-details';
-
-        const from = document.createElement('span');
-        from.className = 'from';
-        from.textContent = email.from;
-        emailDetails.appendChild(from);
-
-        const subject = document.createElement('span');
-        subject.className = 'subject';
-        subject.textContent = email.subject;
-        emailDetails.appendChild(subject);
-
-        mainContent.appendChild(emailDetails);
-
-        const emailMeta = document.createElement('div');
-        emailMeta.className = 'email-meta';
-
-        const scoreDiv = document.createElement('div');
-        scoreDiv.className = 'score';
-        scoreDiv.textContent = typeof email.score === 'number' ? `${Math.round(email.score * 100)}%` : 'N/A';
-        emailMeta.appendChild(scoreDiv);
-
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'date';
-        const dateValue = email.internalDate ? parseInt(email.internalDate, 10) : 0;
-        if (dateValue > 0) {
-            const date = new Date(dateValue);
-            dateSpan.textContent = date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            currentTheme = 'light';
         } else {
-            dateSpan.textContent = '';
-        }
-        emailMeta.appendChild(dateSpan);
-
-
-        const reclassifyButtons = document.createElement('div');
-        reclassifyButtons.className = 'reclassify-buttons';
-
-        if (email.category === 'Human') {
-            const moveToBotButton = document.createElement('button');
-            moveToBotButton.innerHTML = '&#129302;'; // 🤖
-            moveToBotButton.title = 'Move to Bot';
-            moveToBotButton.className = 'btn btn-secondary';
-            moveToBotButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                reclassifyEmail(email.id, 'Bot');
-            });
-            reclassifyButtons.appendChild(moveToBotButton);
-        } else {
-            const moveToHumanButton = document.createElement('button');
-            moveToHumanButton.innerHTML = '&#128100;'; // 👤
-            moveToHumanButton.title = 'Move to Human';
-            moveToHumanButton.className = 'btn btn-secondary';
-            moveToHumanButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                reclassifyEmail(email.id, 'Human');
-            });
-            reclassifyButtons.appendChild(moveToHumanButton);
-        }
-
-        const isPinned = pinnedEmails.some(pinnedEmail => pinnedEmail.id === email.id);
-
-        if (isPinned) {
-            const unpinButton = document.createElement('button');
-            unpinButton.innerHTML = '&#128205;'; // 📍
-            unpinButton.title = 'Unpin';
-            unpinButton.className = 'btn btn-secondary';
-            unpinButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                unpinEmail(email.id);
-            });
-            reclassifyButtons.appendChild(unpinButton);
-        } else {
-            const pinButton = document.createElement('button');
-            pinButton.innerHTML = '&#128204;'; // 📌
-            pinButton.title = 'Pin';
-            pinButton.className = 'btn btn-secondary';
-            pinButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                pinEmail(email.id);
-            });
-            reclassifyButtons.appendChild(pinButton);
-        }
-
-        emailMeta.appendChild(reclassifyButtons);
-
-        const cardActions = document.createElement('div');
-        cardActions.className = 'card-actions';
-
-        const replyButton = document.createElement('button');
-        replyButton.className = 'btn btn-sm btn-outline-secondary reply-button';
-        replyButton.innerHTML = '<i class="fas fa-reply"></i>';
-        replyButton.title = 'Reply to this email';
-
-        replyButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // ESSENTIAL: Stop the click from opening the email body
-            openReplyModal(email); // Manually open our custom modal
-        });
-
-        cardActions.appendChild(replyButton);
-
-        const showButton = document.createElement('button');
-        showButton.className = 'btn btn-sm btn-outline-secondary show-button';
-        showButton.innerHTML = '&#128214;'; // Book emoji
-        showButton.title = 'Show full email';
-
-        showButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openFullScreenEmail(email);
-        });
-
-        cardActions.appendChild(showButton);
-
-        emailMeta.appendChild(cardActions);
-
-        mainContent.appendChild(emailMeta);
-
-        listItem.appendChild(mainContent);
-
-        const snippet = document.createElement('p');
-        snippet.className = 'snippet';
-        snippet.textContent = email.snippet;
-        listItem.appendChild(snippet);
-
-        const body = document.createElement('div');
-        body.className = 'body';
-        if (email.bodyHtml) {
-            body.innerHTML = DOMPurify.sanitize(email.bodyHtml);
-        } else {
-            body.textContent = email.body;
-        }
-        body.style.display = 'none';
-        listItem.appendChild(body);
-
-        listItem.addEventListener('click', () => {
-            const isBodyVisible = body.style.display === 'block';
-            body.style.display = isBodyVisible ? 'none' : 'block';
-        });
-
-        return listItem;
-    }
-
-    function pinEmail(emailId) {
-        const emailIndex = emails.findIndex(e => e.id === emailId);
-        if (emailIndex > -1) {
-            const [pinnedEmail] = emails.splice(emailIndex, 1);
-            pinnedEmails.push(pinnedEmail);
-            rerenderEmails();
-        }
-    }
-
-    function unpinEmail(emailId) {
-        const emailIndex = pinnedEmails.findIndex(e => e.id === emailId);
-        if (emailIndex > -1) {
-            const [unpinnedEmail] = pinnedEmails.splice(emailIndex, 1);
-            emails.push(unpinnedEmail);
-            rerenderEmails();
-        }
-    }
-
-    function createPairBoxElement(group, groupKey, emoji) {
-        const box = document.createElement('div');
-        box.className = 'pair-box';
-        box.dataset.emailIds = group.map(email => email.id).join(',');
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'pair-checkbox';
-        checkbox.addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            group.forEach(email => {
-                const emailListItem = document.querySelector(`.email-item[data-id="${email.id}"]`);
-                if (emailListItem) {
-                    const innerCheckbox = emailListItem.querySelector('input[type="checkbox"]');
-                    if (innerCheckbox) {
-                        innerCheckbox.checked = isChecked;
-                    }
-                }
-            });
-        });
-        box.appendChild(checkbox);
-
-        const emojiSpan = document.createElement('span');
-        emojiSpan.className = 'pair-emoji';
-        emojiSpan.textContent = emoji;
-        box.appendChild(emojiSpan);
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'pair-content';
-
-        const title = document.createElement('h3');
-        title.textContent = groupKey;
-        contentDiv.appendChild(title);
-
-        group.sort((a, b) => a.internalDate - b.internalDate).forEach(email => {
-            const emailLine = document.createElement('p');
-            const date = new Date(parseInt(email.internalDate, 10));
-            const dateString = date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-            const timeString = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-            emailLine.textContent = `(${dateString} ${timeString}) - ${email.subject}`;
-            contentDiv.appendChild(emailLine);
-        });
-        box.appendChild(contentDiv);
-        return box;
-    }
-
-    function displayEmails(emailsToDisplay, listContainer, highlightedContainer, showGroups) {
-        if (!listContainer) return;
-        listContainer.innerHTML = '';
-        if (highlightedContainer) {
-            highlightedContainer.innerHTML = '';
-        }
-
-        if (!emailsToDisplay || emailsToDisplay.length === 0) {
-            listContainer.innerHTML = '<p>No unread emails found in this category.</p>';
-            return;
-        }
-
-        let processedIds = new Set();
-        if (showGroups && highlightedContainer) {
-            const { groups, processedIds: pIds } = findEmailGroups(emailsToDisplay);
-            processedIds = pIds;
-            const emojis = ['♣️', '♠️', '♥️', '♦️'];
-
-            for (let i = emojis.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [emojis[i], emojis[j]] = [emojis[j], emojis[i]];
-            }
-
-            Object.entries(groups).forEach(([groupKey, group], index) => {
-                if (group.length > 0) {
-                    const emoji = emojis[index % emojis.length];
-                    const pairBox = createPairBoxElement(group, groupKey, emoji);
-                    highlightedContainer.appendChild(pairBox);
-                }
-            });
-        }
-
-        const regularEmailList = document.createElement('ul');
-        emailsToDisplay.forEach(email => {
-            const emailElement = createEmailElement(email);
-            if (processedIds.has(email.id)) {
-                emailElement.classList.add('is-grouped');
-            }
-            regularEmailList.appendChild(emailElement);
-        });
-
-        listContainer.appendChild(regularEmailList);
-    }
-
-    function setupAutoRefresh() {
-        const interval = parseInt(autoRefreshSelect.value, 10);
-
-        if (refreshTimer) {
-            clearInterval(refreshTimer);
-            refreshTimer = null;
-        }
-
-        if (interval > 0) {
-            refreshTimer = setInterval(fetchAndDisplayEmails, interval * 1000);
-        }
-    }
-
-    autoRefreshSelect.addEventListener('change', setupAutoRefresh);
-    emailLimitSelect.addEventListener('change', fetchAndDisplayEmails);
-
-    fetchAndDisplayEmails();
-
-    // --- Log Panel ---
-    const logPanel = document.getElementById('log-panel');
-    const openLogPanelButton = document.getElementById('open-log-panel');
-    const closeLogPanelButton = document.getElementById('close-log-panel');
-    const logFileSelector = document.getElementById('log-file-selector');
-    const refreshLogButton = document.getElementById('refresh-log-button');
-    const logContent = document.getElementById('log-content');
-    const logPrevPageButton = document.getElementById('log-prev-page');
-    const logNextPageButton = document.getElementById('log-next-page');
-    const logPageInfo = document.getElementById('log-page-info');
-
-    let logsLoaded = false;
-    let currentPage = 0;
-    let totalLines = 0;
-    const linesPerPage = 100;
-
-    openLogPanelButton.addEventListener('click', () => {
-        logPanel.classList.add('open');
-        if (!logsLoaded) {
-            fetchLogFiles();
-            logsLoaded = true;
+            body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
+            currentTheme = 'dark';
         }
     });
 
-    closeLogPanelButton.addEventListener('click', () => {
-        logPanel.classList.remove('open');
+    // Start Fetching Data
+    fetchBackupSources();
+    fetchAutoDiscovery();
+    fetchExcludedEmails();
+
+    // Set interval for live updates (refresh every 60 seconds)
+    setInterval(() => {
+        fetchBackupSources();
+    }, 60000);
+
+    // -------------------------------------------------------------
+    // Event Listeners
+    // -------------------------------------------------------------
+    // Search listener
+    searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        renderSourcesTable();
     });
 
-    async function fetchLogFiles() {
-        try {
-            const response = await fetch('/api/logs');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const logFiles = await response.json();
-            logFileSelector.innerHTML = '';
-            logFiles.forEach(file => {
-                const option = document.createElement('option');
-                option.value = file;
-                option.textContent = file;
-                logFileSelector.appendChild(option);
-            });
-            if (logFiles.length > 0) {
-                selectLogFile(logFiles[0]);
-            }
-        } catch (error) {
-            console.error('Error fetching log files:', error);
-            logContent.textContent = 'Error fetching log files.';
-        }
+    // Filter badges listener
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderSourcesTable();
+        });
+    });
+
+    // Auto-Discovery scan on tab click
+    discoverTab.addEventListener('click', () => {
+        fetchAutoDiscovery();
+    });
+
+    // Trash tab click
+    const trashTabEl = document.getElementById('trash-tab');
+    if (trashTabEl) {
+        trashTabEl.addEventListener('click', () => {
+            fetchExcludedEmails();
+        });
     }
 
-    async function selectLogFile(logFile) {
-        if (!logFile) return;
-        try {
-            const response = await fetch(`/api/logs/${logFile}?meta=true`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const meta = await response.json();
-            totalLines = meta.totalLines;
-            currentPage = 0;
-            fetchLogContent(logFile, currentPage);
-        } catch (error) {
-            console.error(`Error fetching log meta for ${logFile}:`, error);
-            logContent.textContent = `Error fetching log meta for ${logFile}.`;
-        }
+    // Auto-Discovery Search listener
+    const discoverSearchInput = document.getElementById('discover-search-input');
+    if (discoverSearchInput) {
+        discoverSearchInput.addEventListener('input', (e) => {
+            discoverSearchQuery = e.target.value.toLowerCase().trim();
+            renderDiscoveryTable(autoDiscoverySuggestions);
+        });
     }
 
-    async function fetchLogContent(logFile, page) {
-        if (!logFile) return;
-        const offset = page * linesPerPage;
-        try {
-            const response = await fetch(`/api/logs/${logFile}?offset=${offset}&limit=${linesPerPage}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const text = await response.text();
-            logContent.textContent = text;
-            updatePaginationControls();
-        } catch (error) {
-            console.error(`Error fetching log content for ${logFile}:`, error);
-            logContent.textContent = `Error fetching log content for ${logFile}.`;
-        }
-    }
-
-    function updatePaginationControls() {
-        const totalPages = Math.ceil(totalLines / linesPerPage);
-        logPageInfo.textContent = `Page ${currentPage + 1} of ${totalPages}`;
-        logPrevPageButton.disabled = currentPage === 0;
-        logNextPageButton.disabled = currentPage >= totalPages - 1;
-    }
-
-    logFileSelector.addEventListener('change', () => {
-        selectLogFile(logFileSelector.value);
-    });
-
-    refreshLogButton.addEventListener('click', () => {
-        fetchLogContent(logFileSelector.value, currentPage);
-    });
-
-    logPrevPageButton.addEventListener('click', () => {
-        if (currentPage > 0) {
-            currentPage--;
-            fetchLogContent(logFileSelector.value, currentPage);
-        }
-    });
-
-    logNextPageButton.addEventListener('click', () => {
-        const totalPages = Math.ceil(totalLines / linesPerPage);
-        if (currentPage < totalPages - 1) {
-            currentPage++;
-            fetchLogContent(logFileSelector.value, currentPage);
-        }
-    });
-    // --- End Log Panel ---
-
-    // --- LLM Status Check ---
-    const llmStatusIndicator = document.getElementById('llm-status');
-
-    async function checkLlmStatus() {
-        try {
-            const response = await fetch(`https://${window.location.hostname}:5001/api/health`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    llmStatusIndicator.classList.remove('llm-status-down');
-                    llmStatusIndicator.classList.add('llm-status-up');
-                    llmStatusIndicator.title = 'LLM is operational';
+    // Auto-Discovery Headers Sorting listener
+    const discoverHeaderRow = document.getElementById('discover-table-header-row');
+    if (discoverHeaderRow) {
+        discoverHeaderRow.querySelectorAll('th.sortable-th').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortField = th.dataset.sort;
+                if (discoverSortField === sortField) {
+                    discoverSortDirection = (discoverSortDirection === 'asc') ? 'desc' : 'asc';
                 } else {
-                    llmStatusIndicator.classList.remove('llm-status-up');
-                    llmStatusIndicator.classList.add('llm-status-down');
-                    llmStatusIndicator.title = 'LLM is not responding';
+                    discoverSortField = sortField;
+                    discoverSortDirection = 'asc';
                 }
+                updateDiscoverHeaderIcons();
+                renderDiscoveryTable(autoDiscoverySuggestions);
+            });
+        });
+    }
+
+    // Modal submit handler (Add or Update)
+    sourceForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveSourceForm();
+    });
+
+    // Reset modal fields on manual "Nuova Sorgente" click
+    document.getElementById('add-source-btn').addEventListener('click', () => {
+        document.getElementById('sourceModalLabel').innerHTML = '<i class="fa-solid fa-plus text-warning me-2"></i>Aggiungi Sorgente Backup';
+        document.getElementById('form-source-id').value = '';
+        sourceForm.reset();
+        document.getElementById('form-source-active').checked = true;
+        hideRegexAssistant();
+    });
+
+    // -------------------------------------------------------------
+    // Regex Assistant & Generator & Tester Logic
+    // -------------------------------------------------------------
+    const btnRegexGenerator = document.getElementById('btn-regex-generator');
+    const regexAssistantPanel = document.getElementById('regex-assistant-panel');
+    const btnCloseRegexAssistant = document.getElementById('btn-close-regex-assistant');
+    const regexHelperEmailSelect = document.getElementById('regex-helper-email-select');
+    const btnRefreshHelperEmails = document.getElementById('btn-refresh-helper-emails');
+    const regexOptionsContainer = document.getElementById('regex-options-container');
+    const regexOptionsList = document.getElementById('regex-options-list');
+    const btnTestRegexRun = document.getElementById('btn-test-regex-run');
+    const regexTestStatus = document.getElementById('regex-test-status');
+    const regexTestResultsList = document.getElementById('regex-test-results-list');
+
+    let loadedRecentEmails = [];
+    let testRegexDebounceTimeout;
+
+    function debounceTestRegex() {
+        clearTimeout(testRegexDebounceTimeout);
+        testRegexDebounceTimeout = setTimeout(() => {
+            testCurrentRegex();
+        }, 400);
+    }
+
+    // Helper to hide assistant panel
+    function hideRegexAssistant() {
+        if (regexAssistantPanel) {
+            regexAssistantPanel.classList.add('d-none');
+            regexHelperEmailSelect.value = '';
+            regexOptionsContainer.classList.add('d-none');
+            regexOptionsList.innerHTML = '';
+        }
+    }
+
+    // Toggle assistant panel
+    if (btnRegexGenerator) {
+        btnRegexGenerator.addEventListener('click', () => {
+            if (regexAssistantPanel.classList.contains('d-none')) {
+                regexAssistantPanel.classList.remove('d-none');
+                fetchRecentEmailsForHelper();
             } else {
-                llmStatusIndicator.classList.remove('llm-status-up');
-                llmStatusIndicator.classList.add('llm-status-down');
-                llmStatusIndicator.title = 'LLM is not responding';
+                hideRegexAssistant();
+            }
+        });
+    }
+
+    if (btnCloseRegexAssistant) {
+        btnCloseRegexAssistant.addEventListener('click', hideRegexAssistant);
+    }
+
+    // Fetch recent emails from current sender to populate helper select
+    async function fetchRecentEmailsForHelper() {
+        const sender = document.getElementById('form-source-sender').value.trim();
+        regexHelperEmailSelect.innerHTML = '<option value="">-- Caricamento email recenti... --</option>';
+        regexOptionsContainer.classList.add('d-none');
+
+        try {
+            const url = `/api/backup/recent-emails?sender=${encodeURIComponent(sender)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            loadedRecentEmails = data.emails || [];
+
+            regexHelperEmailSelect.innerHTML = '';
+            if (loadedRecentEmails.length === 0) {
+                regexHelperEmailSelect.innerHTML = '<option value="">-- Nessuna email recente trovata per questo mittente --</option>';
+            } else {
+                regexHelperEmailSelect.innerHTML = '<option value="">-- Seleziona un\'email recente da usare --</option>';
+                loadedRecentEmails.forEach(email => {
+                    const opt = document.createElement('option');
+                    opt.value = email.id;
+                    const dateStr = new Date(parseInt(email.internalDate)).toLocaleDateString('it-IT');
+                    opt.textContent = `[${dateStr}] ${email.subject}`;
+                    regexHelperEmailSelect.appendChild(opt);
+                });
             }
         } catch (error) {
-            console.error('Error checking LLM status:', error);
-            llmStatusIndicator.classList.remove('llm-status-up');
-            llmStatusIndicator.classList.add('llm-status-down');
-            llmStatusIndicator.title = 'LLM is not responding';
+            console.error('Error fetching recent emails for helper:', error);
+            regexHelperEmailSelect.innerHTML = '<option value="">-- Errore nel caricamento delle email --</option>';
         }
     }
 
-    // Check status immediately and then every 10 seconds
-    checkLlmStatus();
-    setInterval(checkLlmStatus, 10000);
-
-    // --- Notes Panel Logic ---
-    const notesPanel = document.getElementById('notes-panel');
-    const toggleNotesPanelButton = document.getElementById('toggle-notes-panel');
-    const closeNotesPanelButton = document.getElementById('close-notes-panel');
-    const noteSelector = document.getElementById('note-selector');
-    const newNoteButton = document.getElementById('new-note-button');
-    const deleteNoteButton = document.getElementById('delete-note-button');
-    const saveNoteButton = document.getElementById('save-note-button');
-    const noteContent = document.getElementById('note-content');
-
-    const easyMDE = new EasyMDE({ element: noteContent });
-
-    let notes = [];
-    let currentNoteId = null;
-
-    async function fetchNotes() {
-        try {
-            const response = await fetch('/api/notes');
-            if (!response.ok) throw new Error('Failed to fetch notes');
-            notes = await response.json();
-            renderNoteSelector();
-            displaySelectedNote();
-        } catch (error) {
-            console.error('Error fetching notes:', error);
-            alert('Could not fetch notes.');
-        }
+    if (btnRefreshHelperEmails) {
+        btnRefreshHelperEmails.addEventListener('click', fetchRecentEmailsForHelper);
     }
 
-    function renderNoteSelector() {
-        const selectedValue = noteSelector.value;
-        noteSelector.innerHTML = '';
-        notes.forEach(note => {
-            const option = document.createElement('option');
-            option.value = note.id;
-            option.textContent = note.title;
-            noteSelector.appendChild(option);
+    // Automatically refresh emails list if sender is typed/changed
+    const senderInput = document.getElementById('form-source-sender');
+    if (senderInput) {
+        senderInput.addEventListener('change', () => {
+            if (regexAssistantPanel && !regexAssistantPanel.classList.contains('d-none')) {
+                fetchRecentEmailsForHelper();
+            }
         });
-        noteSelector.value = selectedValue;
     }
 
-    function displaySelectedNote() {
-        currentNoteId = noteSelector.value;
-        const selectedNote = notes.find(note => note.id === currentNoteId);
-        if (selectedNote) {
-            easyMDE.value(selectedNote.content);
+    // Handle email selection to generate regex options
+    if (regexHelperEmailSelect) {
+        regexHelperEmailSelect.addEventListener('change', (e) => {
+            const emailId = e.target.value;
+            if (!emailId) {
+                regexOptionsContainer.classList.add('d-none');
+                return;
+            }
+
+            const selectedEmail = loadedRecentEmails.find(email => email.id === emailId);
+            if (!selectedEmail) return;
+
+            generateRegexOptions(selectedEmail.subject);
+        });
+    }
+
+    // Escape regex utility
+    function escapeRegExp(string) {
+        return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    }
+
+    // Main Regex Generator Logic
+    function generateRegexOptions(subject) {
+        regexOptionsList.innerHTML = '';
+        
+        // Option 1: Exact match anchored
+        const escapedExact = '^' + escapeRegExp(subject) + '$';
+        
+        // Option 2: Dynamic capture inside brackets or parentheses
+        let dynamicRegex = '';
+        let inferredFingerprint = '';
+        let hasBrackets = false;
+
+        // Try square brackets first: e.g. "Backup [JOB-A1] Success"
+        const squareBracketsMatch = subject.match(/\[([^\]]+)\]/);
+        if (squareBracketsMatch) {
+            const inner = squareBracketsMatch[0]; // [JOB-A1]
+            inferredFingerprint = squareBracketsMatch[1]; // JOB-A1
+            const escapedPart = escapeRegExp(subject.replace(inner, '###DYNAMIC###'));
+            dynamicRegex = escapedPart.replace('###DYNAMIC###', '\\[(.*?)\\]');
+            hasBrackets = true;
         } else {
-            easyMDE.value('');
+            // Try parenthesis: e.g. "Backup (JOB-B2) Success"
+            const parenMatch = subject.match(/\(([^)]+)\)/);
+            if (parenMatch) {
+                const inner = parenMatch[0];
+                inferredFingerprint = parenMatch[1];
+                const escapedPart = escapeRegExp(subject.replace(inner, '###DYNAMIC###'));
+                dynamicRegex = escapedPart.replace('###DYNAMIC###', '\\((.*?)\\)');
+                hasBrackets = true;
+            }
         }
+
+        // If no brackets but contains common backup patterns or numbers, infer general dynamic capture
+        if (!hasBrackets) {
+            const words = subject.split(/\s+/);
+            if (words.length > 2) {
+                const lastWord = words[words.length - 1];
+                inferredFingerprint = lastWord;
+                const escapedPart = escapeRegExp(subject.substring(0, subject.lastIndexOf(lastWord))) + '(.*?)';
+                dynamicRegex = escapedPart;
+            } else {
+                dynamicRegex = escapeRegExp(subject);
+                inferredFingerprint = subject;
+            }
+        }
+
+        // Option 3: Loose "contains"
+        let looseContains = '';
+        const cleanSubject = subject.replace(/[^a-zA-Z0-9\s]/g, '');
+        const words = cleanSubject.split(/\s+/).filter(w => w.length > 3);
+        if (words.length >= 2) {
+            looseContains = words.slice(0, 2).join('.*?');
+        } else {
+            looseContains = escapeRegExp(subject.substring(0, Math.floor(subject.length / 2)));
+        }
+
+        const options = [
+            {
+                title: 'Corrispondenza Esatta',
+                desc: 'Cattura solo le email con questo identico oggetto.',
+                regex: escapedExact,
+                fingerprint: subject
+            },
+            {
+                title: 'Cattura Dinamica (Fingerprint)',
+                desc: 'Consigliata per flussi con codici o date dinamiche tra parentesi.',
+                regex: dynamicRegex,
+                fingerprint: inferredFingerprint
+            },
+            {
+                title: 'Espressione Generica (Contiene)',
+                desc: 'Verifica semplicemente se l\'oggetto contiene le parole chiave principali.',
+                regex: looseContains,
+                fingerprint: inferredFingerprint || 'Backup'
+            }
+        ];
+
+        options.forEach(opt => {
+            const card = document.createElement('div');
+            card.className = 'p-2 rounded bg-dark border border-secondary d-flex justify-content-between align-items-center gap-2 mt-2';
+            card.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div class="fw-semibold text-warning-emphasis fs-7">${opt.title}</div>
+                    <code class="text-info fs-8 d-block text-truncate mt-1" style="user-select: all;" title="${opt.regex}">${opt.regex}</code>
+                    <div class="text-muted fs-8 mt-1">${opt.desc}</div>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-xs btn-outline-warning text-nowrap py-1 apply-regex-btn">
+                        <i class="fa-solid fa-check"></i> Applica
+                    </button>
+                </div>
+            `;
+
+            card.querySelector('.apply-regex-btn').addEventListener('click', () => {
+                document.getElementById('form-source-subject-regex').value = opt.regex;
+                showToast('Regex applicata con successo!', 'fa-wand-magic-sparkles', 'bg-success');
+                testCurrentRegex();
+            });
+
+            regexOptionsList.appendChild(card);
+        });
+
+        regexOptionsContainer.classList.remove('d-none');
     }
 
-    toggleNotesPanelButton.addEventListener('click', () => {
-        notesPanel.classList.toggle('open');
-        if (notesPanel.classList.contains('open') && notes.length === 0) {
-            fetchNotes();
+    // Tester function
+    async function testCurrentRegex() {
+        const sender = document.getElementById('form-source-sender').value.trim();
+        const subjectRegex = document.getElementById('form-source-subject-regex').value.trim();
+
+        if (!subjectRegex) {
+            regexTestStatus.innerHTML = '<span class="text-secondary">Digita la regex per vedere l\'anteprima.</span>';
+            regexTestResultsList.style.display = 'none';
+            return;
         }
-    });
 
-    closeNotesPanelButton.addEventListener('click', () => {
-        notesPanel.classList.remove('open');
-    });
-
-    noteSelector.addEventListener('change', displaySelectedNote);
-
-    newNoteButton.addEventListener('click', async () => {
-        const title = prompt('Enter a title for the new note:');
-        if (!title) return;
+        regexTestStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div> Analisi della cache email in corso...';
+        regexTestResultsList.style.display = 'none';
+        regexTestResultsList.innerHTML = '';
 
         try {
-            const response = await fetch('/api/notes', {
+            const res = await fetch('/api/backup/test-regex', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content: '' }),
+                body: JSON.stringify({ sender, subjectRegex })
             });
-            if (!response.ok) throw new Error('Failed to create note');
-            const newNote = await response.json();
-            notes.push(newNote);
-            renderNoteSelector();
-            noteSelector.value = newNote.id;
-            displaySelectedNote();
+
+            if (!res.ok) {
+                const err = await res.json();
+                regexTestStatus.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Errore: ${err.message || 'Espressione non valida'}</span>`;
+                return;
+            }
+
+            const data = await res.json();
+            const matches = data.matches || [];
+
+            if (matches.length === 0) {
+                regexTestStatus.innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> Nessuna email corrisponde a questa configurazione. Controlla il mittente o l\'espressione regolare.</span>';
+            } else {
+                regexTestStatus.innerHTML = `<span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i> Trovate ${matches.length} email corrispondenti nella cache!</span>`;
+                
+                matches.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'fs-8 border-bottom border-secondary-subtle py-1 text-white-50 text-truncate';
+                    const dateStr = new Date(parseInt(m.internalDate)).toLocaleString('it-IT');
+                    item.innerHTML = `<strong class="text-white">${dateStr}</strong> - ${m.subject}`;
+                    regexTestResultsList.appendChild(item);
+                });
+                
+                regexTestResultsList.style.display = 'block';
+            }
         } catch (error) {
-            console.error('Error creating note:', error);
-            alert('Could not create note.');
+            console.error('Error testing regex:', error);
+            regexTestStatus.innerHTML = '<span class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i> Errore di comunicazione con il server.</span>';
         }
-    });
+    }
 
-    deleteNoteButton.addEventListener('click', async () => {
-        if (!currentNoteId) {
-            alert('Please select a note to delete.');
-            return;
+    if (btnTestRegexRun) {
+        btnTestRegexRun.addEventListener('click', testCurrentRegex);
+    }
+
+    // Auto-run test on input changes
+    const formRegexInput = document.getElementById('form-source-subject-regex');
+    if (formRegexInput) {
+        formRegexInput.addEventListener('input', debounceTestRegex);
+    }
+    const formSenderInput = document.getElementById('form-source-sender');
+    if (formSenderInput) {
+        formSenderInput.addEventListener('input', debounceTestRegex);
+    }
+
+    // -------------------------------------------------------------
+    // Core API Requests
+    // -------------------------------------------------------------
+    async function fetchBackupSources() {
+        try {
+            const res = await fetch('/api/backup/sources');
+            if (res.status === 401) {
+                // Not authenticated
+                showToast('Sessione scaduta. Reindirizzamento al login...', 'fa-triangle-exclamation', 'bg-danger');
+                setTimeout(() => window.location.href = '/login.html', 2000);
+                return;
+            }
+            const data = await res.json();
+            backupSources = data.sources || [];
+            updateKPIs();
+            renderSourcesTable();
+        } catch (error) {
+            console.error('Error fetching backup sources:', error);
+            showToast('Errore nel caricamento delle sorgenti.', 'fa-circle-exclamation', 'bg-danger');
         }
+    }
 
-        if (!confirm('Are you sure you want to delete this note?')) return;
+    async function fetchAutoDiscovery() {
+        try {
+            const res = await fetch('/api/backup/discover');
+            const data = await res.json();
+            autoDiscoverySuggestions = data.suggestions || [];
+            
+            // Update discovery badge count
+            if (autoDiscoverySuggestions.length > 0) {
+                discoveryBadge.textContent = autoDiscoverySuggestions.length;
+                discoveryBadge.classList.remove('d-none');
+            } else {
+                discoveryBadge.classList.add('d-none');
+            }
+            
+            renderDiscoveryTable(autoDiscoverySuggestions);
+        } catch (error) {
+            console.error('Error in auto-discovery scan:', error);
+        }
+    }
+
+    async function fetchExcludedEmails() {
+        const trashTableBody = document.getElementById('trash-table-body');
+        const trashBadge = document.getElementById('trash-badge');
+        if (!trashTableBody) return;
 
         try {
-            const response = await fetch(`/api/notes/${currentNoteId}`, {
-                method: 'DELETE',
+            const res = await fetch('/api/backup/excluded-emails');
+            const data = await res.json();
+            const emails = data.emails || [];
+
+            // Update trash badge count
+            if (emails.length > 0) {
+                if (trashBadge) {
+                    trashBadge.textContent = emails.length;
+                    trashBadge.classList.remove('d-none');
+                }
+            } else {
+                if (trashBadge) {
+                    trashBadge.classList.add('d-none');
+                }
+            }
+
+            trashTableBody.innerHTML = '';
+            if (emails.length === 0) {
+                trashTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-trash-arrow-up text-secondary fs-3 mb-2"></i>
+                            <p class="m-0">Nessuna e-mail nel cestino.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            emails.forEach(email => {
+                const tr = document.createElement('tr');
+                const dateObj = new Date(parseInt(email.internalDate));
+                const dateStr = dateObj.toLocaleString('it-IT');
+
+                tr.innerHTML = `
+                    <td>
+                        <span class="fw-semibold text-light-emphasis">${escapeHtml(email.subject)}</span>
+                    </td>
+                    <td>
+                        <span class="fs-7 text-muted"><i class="fa-regular fa-envelope me-1"></i>${escapeHtml(email.from)}</span>
+                    </td>
+                    <td>
+                        <span class="fs-7 text-muted code-font">${dateStr}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success restore-email-btn" data-id="${email.id}">
+                            <i class="fa-solid fa-trash-can-arrow-up me-1"></i> Ripristina
+                        </button>
+                    </td>
+                `;
+
+                tr.querySelector('.restore-email-btn').addEventListener('click', async (e) => {
+                    const btn = e.currentTarget;
+                    const id = btn.dataset.id;
+                    try {
+                        const restoreRes = await fetch('/api/backup/restore-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ emailId: id })
+                        });
+                        const restoreData = await restoreRes.json();
+                        if (restoreData.success) {
+                            showToast('Email ripristinata con successo.', 'fa-circle-check', 'bg-success');
+                            fetchExcludedEmails();
+                            fetchBackupSources();
+                            fetchAutoDiscovery();
+                        } else {
+                            showToast('Errore durante il ripristino: ' + (restoreData.message || 'Errore sconosciuto'), 'fa-circle-exclamation', 'bg-danger');
+                        }
+                    } catch (err) {
+                        console.error('Error restoring email:', err);
+                        showToast('Errore di rete durante il ripristino.', 'fa-circle-exclamation', 'bg-danger');
+                    }
+                });
+
+                trashTableBody.appendChild(tr);
             });
-            if (!response.ok) throw new Error('Failed to delete note');
-            notes = notes.filter(note => note.id !== currentNoteId);
-            renderNoteSelector();
-            displaySelectedNote();
         } catch (error) {
-            console.error('Error deleting note:', error);
-            alert('Could not delete note.');
+            console.error('Error fetching excluded emails:', error);
+            trashTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-danger">
+                        <i class="fa-solid fa-circle-exclamation fs-3 mb-2"></i>
+                        <p class="m-0">Errore durante il caricamento del cestino.</p>
+                    </td>
+                </tr>
+            `;
         }
-    });
+    }
 
-    saveNoteButton.addEventListener('click', async () => {
-        if (!currentNoteId) {
-            alert('Please select a note to save.');
-            return;
-        }
+    async function saveSourceForm() {
+        const id = document.getElementById('form-source-id').value;
+        const name = document.getElementById('form-source-name').value.trim();
+        const sender = document.getElementById('form-source-sender').value.trim();
+        const frequency = document.getElementById('form-source-frequency').value;
+        const subjectRegex = document.getElementById('form-source-subject-regex').value.trim();
+        const active = document.getElementById('form-source-active').checked;
 
-        const content = easyMDE.value();
-        const note = notes.find(note => note.id === currentNoteId);
+        const payload = {
+            name,
+            sender,
+            expectedFrequency: frequency,
+            subjectRegex,
+            fingerprint: '',
+            active
+        };
+
+        const isEdit = !!id;
+        const url = isEdit ? `/api/backup/sources/${id}` : '/api/backup/sources';
+        const method = isEdit ? 'PUT' : 'POST';
 
         try {
-            const response = await fetch(`/api/notes/${currentNoteId}`, {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showToast(isEdit ? 'Sorgente aggiornata con successo!' : 'Nuova sorgente aggiunta al monitoraggio!', 'fa-circle-check', 'bg-success');
+                sourceModal.hide();
+                fetchBackupSources();
+                fetchAutoDiscovery();
+            } else {
+                const errData = await res.json();
+                showToast(`Salvataggio fallito: ${errData.message || 'Errore di validazione'}`, 'fa-circle-exclamation', 'bg-danger');
+            }
+        } catch (error) {
+            console.error('Error saving backup source form:', error);
+            showToast('Errore durante la comunicazione con il server.', 'fa-circle-exclamation', 'bg-danger');
+        }
+    }
+
+    async function toggleActiveState(id, state) {
+        try {
+            const res = await fetch(`/api/backup/sources/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: note.title, content }),
+                body: JSON.stringify({ active: state })
             });
-            if (!response.ok) throw new Error('Failed to save note');
-            const updatedNote = await response.json();
-            const noteIndex = notes.findIndex(n => n.id === currentNoteId);
-            notes[noteIndex] = updatedNote;
-            alert('Note saved successfully.');
+
+            if (res.ok) {
+                showToast(state ? 'Monitoraggio riattivato.' : 'Monitoraggio messo in pausa.', 'fa-circle-info', 'bg-info');
+                fetchBackupSources();
+            } else {
+                showToast('Impossibile aggiornare lo stato attivo.', 'fa-circle-exclamation', 'bg-danger');
+            }
         } catch (error) {
-            console.error('Error saving note:', error);
-            alert('Could not save note.');
-        }
-    });
-
-    // --- End Notes Panel Logic ---
-
-    // Walkthrough code starts here
-
-    // Walkthrough code starts here
-
-    // --- Manual Reply Modal Logic (Bypassing Bootstrap JS) ---
-    const replyModalEl = document.getElementById('replyModal');
-    const sendReplyBtn = document.getElementById('send-reply-btn');
-    const cancelReplyButtons = replyModalEl.querySelectorAll('[data-bs-dismiss="modal"]');
-
-    function openReplyModal(email) {
-        if (!email || !replyModalEl) return;
-
-        // Populate the modal fields
-        replyModalEl.querySelector('#reply-to').value = email.from;
-        const subjectField = replyModalEl.querySelector('#reply-subject');
-        subjectField.value = email.subject.startsWith('Re: ') ? email.subject : `Re: ${email.subject}`;
-
-        const originalBody = email.body.split('\n').map(line => `> ${line}`).join('\n');
-        replyModalEl.querySelector('#reply-body').value = `
-
----
-${originalBody}`;
-
-        // Pass the email ID to the send button
-        sendReplyBtn.dataset.originalMessageId = email.id;
-
-        // Manually show the modal
-        document.body.classList.add('modal-open');
-        replyModalEl.style.display = 'block';
-        replyModalEl.classList.add('show');
-        const backdrop = document.createElement('div');
-        backdrop.className = 'modal-backdrop fade show';
-        document.body.appendChild(backdrop);
-    }
-
-    function closeReplyModal() {
-        if (!replyModalEl) return;
-
-        // Manually hide the modal
-        document.body.classList.remove('modal-open');
-        replyModalEl.style.display = 'none';
-        replyModalEl.classList.remove('show');
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) {
-            backdrop.remove();
+            console.error('Error toggling active state:', error);
         }
     }
 
-    // Listener for the send button
-    sendReplyBtn.addEventListener('click', async () => {
-        const originalMessageId = sendReplyBtn.dataset.originalMessageId;
-        const replyText = document.getElementById('reply-body').value;
-        const to = document.getElementById('reply-to').value;
-        const subject = document.getElementById('reply-subject').value;
-
-        if (!replyText.trim()) {
-            alert('Message cannot be empty.');
+    async function deleteBackupSource(id, name) {
+        if (!confirm(`Sei sicuro di voler eliminare la sorgente "${name}"?\nNon riceverai più notifiche o allarmi per questo backup.`)) {
             return;
         }
 
         try {
-            const response = await fetch('/api/send-reply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ originalMessageId, replyText, to, subject })
+            const res = await fetch(`/api/backup/sources/${id}`, {
+                method: 'DELETE'
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to send reply.');
-            }
-
-            const result = await response.json();
-            alert(result.message);
-            closeReplyModal();
-
-        } catch (error) {
-            console.error('Error sending reply:', error);
-            alert(`Error: ${error.message}`);
-        }
-    });
-
-    // Listeners for cancel/close buttons
-    cancelReplyButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            closeReplyModal();
-        });
-    });
-
-    const aiutoButton = document.getElementById('aiuto-button');
-    const walkthroughOverlay = document.getElementById('walkthrough-overlay');
-    const walkthroughBox = document.getElementById('walkthrough-box');
-    const walkthroughText = document.getElementById('walkthrough-text');
-    const walkthroughNext = document.getElementById('walkthrough-next');
-    const walkthroughEnd = document.getElementById('walkthrough-end');
-
-    let currentWalkthroughStep = 0;
-    const walkthroughSteps = [
-        {
-            selector: '#aiuto-button',
-            text: 'Benvenuto! Questo è il pulsante di aiuto. Cliccalo in qualsiasi momento per iniziare questo tour guidato e scoprire le funzionalità dell\'applicazione.',
-            position: 'bottom'
-        },
-        {
-            selector: '.theme-switch-wrapper',
-            text: 'Clicca su questa icona per passare dalla modalità chiara a quella scura, per un comfort visivo ottimale.',
-            position: 'left'
-        },
-        {
-            selector: '#llm-status',
-            text: 'Questo indicatore mostra lo stato del modello di linguaggio (LLM). Verde significa operativo, rosso indica un problema.',
-            position: 'bottom'
-        },
-        {
-            selector: '#toggle-calendar-panel',
-            text: 'Apri o chiudi il pannello del calendario di Google per gestire i tuoi eventi senza lasciare l\'applicazione.',
-            position: 'bottom'
-        },
-        {
-            selector: '#toggle-notes-panel',
-            text: 'Accedi al pannello delle note per creare, modificare o eliminare appunti personali in formato Markdown.',
-            position: 'bottom'
-        },
-        {
-            selector: '#email-stats',
-            text: 'Qui trovi un riepilogo delle email non lette, con il totale e la suddivisione tra le categorie "Human" e "Bot".',
-            position: 'bottom'
-        },
-        {
-            selector: '#email-limit',
-            text: 'Scegli quante email visualizzare contemporaneamente. Utile per gestire grandi volumi di messaggi.',
-            position: 'bottom'
-        },
-        {
-            selector: '#auto-refresh',
-            text: 'Imposta un intervallo per l\'aggiornamento automatico della lista di email, per avere sempre la situazione sotto controllo.',
-            position: 'bottom'
-        },
-        {
-            selector: '#select-all-checkbox',
-            text: 'Usa questa casella per selezionare o deselezionare rapidamente tutte le email attualmente visibili.',
-            position: 'bottom'
-        },
-        {
-            selector: '#select-current-tab-checkbox',
-            text: 'Seleziona tutte le email presenti solo nella scheda (Tab) attualmente attiva.',
-            position: 'bottom'
-        },
-        {
-            selector: '#select-useless-checkbox',
-            text: 'Questo strumento seleziona in automatico le email che il modello ha identificato come probabilmente irrilevanti (con uno score basso).',
-            position: 'bottom'
-        },
-        {
-            selector: '#sort-score-button',
-            text: 'Ordina le email per punteggio di importanza, dalla più rilevante alla meno rilevante, secondo il modello AI.',
-            position: 'bottom'
-        },
-        {
-            selector: '#sort-date-button',
-            text: 'Ordina le email cronologicamente, mostrando per prime le più recenti.',
-            position: 'bottom'
-        },
-        {
-            selector: '#mark-read-button',
-            text: 'Dopo averle selezionate, usa questo pulsante per segnare più email come lette.',
-            position: 'bottom'
-        },
-        {
-            selector: '#fine-tune-llm-button',
-            text: 'Avvia il processo di "fine-tuning" per addestrare il modello LLM con le nuove valutazioni e riclassificazioni che hai fornito, migliorandone l\'accuratezza futura.',
-            position: 'bottom'
-        },
-        {
-            selector: '.tab-container',
-            text: 'Usa queste schede per navigare tra le email classificate come "Human" (importanti), "Bot" (automatiche) e "Pinned" (salvate).',
-            position: 'bottom'
-        },
-        {
-            selector: '.pair-box',
-            text: 'Questi riquadri raggruppano email correlate (es. alert di sistema e la loro risoluzione) per una gestione più semplice e veloce.',
-            position: 'top'
-        },
-        {
-            selector: '.email-item',
-            text: 'Questa è un\'email. Clicca per leggerne il contenuto. A destra trovi lo score di importanza, la data e i pulsanti di azione.',
-            position: 'top'
-        },
-        {
-            selector: '.rating-widget',
-            text: 'Valuta l\'importanza di un\'email usando le stelle. Il tuo feedback è fondamentale per addestrare il modello a classificare meglio i futuri messaggi.',
-            position: 'left'
-        },
-        {
-            selector: '.reclassify-buttons',
-            text: 'Con questi pulsanti puoi spostare un\'email da "Human" a "Bot" (e viceversa) o "pinnarla" per ritrovarla facilmente nella scheda "Pinned".',
-            position: 'left'
-        },
-        {
-            selector: '.card-actions',
-            text: 'Da qui puoi rispondere direttamente a un\'email o aprirla a schermo intero per una lettura più comoda.',
-            position: 'left'
-        },
-        {
-            selector: '#open-log-panel',
-            text: 'Apri il pannello dei log per visualizzare i registri delle attività del server e del backend, utile per il debug.',
-            position: 'top'
-        }
-    ];
-
-    function showWalkthroughStep(stepIndex) {
-        if (stepIndex < 0 || stepIndex >= walkthroughSteps.length) {
-            endWalkthrough();
-            return;
-        }
-
-        currentWalkthroughStep = stepIndex;
-        const step = walkthroughSteps[currentWalkthroughStep];
-        const targetElement = document.querySelector(step.selector);
-
-        if (!targetElement) {
-            console.warn(`Walkthrough target element not found: ${step.selector}`);
-            // Attempt to find a fallback element or skip this step
-            if (stepIndex + 1 < walkthroughSteps.length) {
-                showWalkthroughStep(stepIndex + 1); // Skip to next step
+            if (res.ok) {
+                showToast('Sorgente eliminata con successo.', 'fa-trash-can', 'bg-success');
+                fetchBackupSources();
+                fetchAutoDiscovery();
             } else {
-                endWalkthrough();
+                showToast('Errore durante l\'eliminazione.', 'fa-circle-exclamation', 'bg-danger');
             }
+        } catch (error) {
+            console.error('Error deleting source:', error);
+        }
+    }
+
+    // -------------------------------------------------------------
+    // UI Rendering Logic
+    // -------------------------------------------------------------
+    function updateKPIs() {
+        let total = backupSources.length;
+        let ok = 0;
+        let warning = 0;
+        let missing = 0;
+        let failed = 0;
+
+        backupSources.forEach(s => {
+            if (!s.active) return; // exclude inactive from active KPI metrics calculation
+            
+            if (s.currentStatus === 'success' || s.currentStatus === 'healthy') {
+                ok++;
+            } else if (s.currentStatus === 'warning') {
+                warning++;
+            } else if (s.currentStatus === 'missing') {
+                missing++;
+            } else if (s.currentStatus === 'failed') {
+                failed++;
+            }
+        });
+
+        // Update elements
+        kpiTotal.textContent = total;
+        kpiOk.textContent = ok;
+        if (kpiWarning) kpiWarning.textContent = warning;
+        kpiMissing.textContent = missing;
+        kpiFailed.textContent = failed;
+    }
+
+    function renderSourcesTable() {
+        sourcesTableBody.innerHTML = '';
+
+        // Filter and search logic
+        const filteredSources = backupSources.filter(s => {
+            // Apply Status Filter
+            if (currentFilter === 'success' && s.currentStatus !== 'success' && s.currentStatus !== 'healthy') return false;
+            if (currentFilter === 'warning' && s.currentStatus !== 'warning') return false;
+            if (currentFilter === 'missing' && s.currentStatus !== 'missing') return false;
+            if (currentFilter === 'failed' && s.currentStatus !== 'failed') return false;
+            if (currentFilter === 'no_data' && s.currentStatus !== 'no_data') return false;
+            if (currentFilter === 'inactive' && s.active) return false;
+            if (currentFilter !== 'inactive' && !s.active && currentFilter !== 'all') return false;
+
+            // Apply Search Query
+            if (searchQuery) {
+                const term = searchQuery;
+                const matchesName = s.name.toLowerCase().includes(term);
+                const matchesSender = (s.sender || '').toLowerCase().includes(term);
+                const matchesFp = (s.fingerprint || '').toLowerCase().includes(term);
+                return matchesName || matchesSender || matchesFp;
+            }
+
+            return true;
+        });
+
+        if (filteredSources.length === 0) {
+            sourcesTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        Nessun flusso corrispondente ai filtri impostati.
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        walkthroughText.textContent = step.text;
+        filteredSources.forEach(s => {
+            const tr = document.createElement('tr');
+            
+            // Status Icon Class
+            let indicatorClass = 'status-indicator';
+            let statusText = 'Sconosciuto';
+            let statusBadgeClass = 'bg-secondary';
 
-        // Position the walkthrough box
-        const targetRect = targetElement.getBoundingClientRect();
-        const boxRect = walkthroughBox.getBoundingClientRect();
+            if (!s.active) {
+                indicatorClass += ' status-inactive';
+                statusText = 'Disattivato';
+            } else {
+                switch (s.currentStatus) {
+                    case 'success':
+                    case 'healthy':
+                        indicatorClass += ' status-success';
+                        statusText = 'Regolare';
+                        statusBadgeClass = 'bg-success';
+                        break;
+                    case 'missing':
+                        indicatorClass += ' status-missing';
+                        statusText = 'Mancante';
+                        statusBadgeClass = 'bg-warning text-dark';
+                        break;
+                    case 'warning':
+                        indicatorClass += ' status-warning'; // Wait, let's map to warning/failed alert
+                        statusText = 'Anomalo';
+                        statusBadgeClass = 'bg-warning text-dark';
+                        break;
+                    case 'failed':
+                        indicatorClass += ' status-failed';
+                        statusText = 'Errore';
+                        statusBadgeClass = 'bg-danger';
+                        break;
+                    case 'no_data':
+                        indicatorClass += ' status-no_data';
+                        statusText = 'Senza Dati';
+                        statusBadgeClass = 'bg-info text-dark';
+                        break;
+                }
+            }
 
-        walkthroughBox.style.display = 'block';
-        walkthroughOverlay.style.display = 'block';
+            // Stats parsing
+            const avgTime = s.stats ? formatMinutes(s.stats.mean) : '--:--';
+            const stdDev = s.stats ? `± ${s.stats.stdDev} min` : '--';
+            const limitTime = s.stats ? formatMinutes(s.stats.maxTime) : '--:--';
 
-        walkthroughBox.setAttribute("data-position", step.position);
+            // Last Received Details
+            let lastReceivedText = 'Mai ricevuto';
+            let lastStatusBadge = '';
+            if (s.lastRun) {
+                const dateObj = new Date(parseInt(s.lastRun.internalDate));
+                lastReceivedText = `${dateObj.toLocaleString('it-IT')} (${getRelativeTimeStr(dateObj)})`;
+                lastStatusBadge = `<span class="run-status-badge status-${s.lastRun.status} ms-2">${s.lastRun.status.toUpperCase()}</span>`;
+            }
 
-        // Reset positioning
-        walkthroughBox.style.top = '';
-        walkthroughBox.style.bottom = '';
-        walkthroughBox.style.left = '';
-        walkthroughBox.style.right = '';
-        walkthroughBox.style.transform = '';
+            // Inactive opacity fade
+            if (!s.active) {
+                tr.style.opacity = '0.6';
+            }
 
-        // Calculate position based on step.position
-        let top, left;
-        const margin = 10; // Small margin from the target element
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="${indicatorClass}" title="${statusText}"></span>
+                        <span class="fs-7 text-uppercase fw-semibold d-none d-lg-inline">${statusText}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="fw-semibold text-primary-emphasis">${escapeHtml(s.name)}</div>
+                    <div class="fs-7 text-muted d-flex align-items-center gap-2 flex-wrap">
+                        <span><i class="fa-regular fa-envelope me-1"></i>${escapeHtml(s.sender)}</span>
+                        <span class="text-secondary-subtle">|</span>
+                        <span class="code-font text-info" title="Regex dell'oggetto"><i class="fa-solid fa-code me-1"></i>${escapeHtml(s.subjectRegex)}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge-frequency">${translateFrequency(s.expectedFrequency)}</span>
+                </td>
+                <td>
+                    <div class="code-font fw-medium">${avgTime}</div>
+                    <div class="fs-7 text-muted">${stdDev}</div>
+                </td>
+                <td>
+                    <div class="code-font fw-medium text-warning-emphasis">${limitTime}</div>
+                </td>
+                <td>
+                    <div class="fs-7 fw-medium">${lastReceivedText}</div>
+                    <div class="fs-7 d-flex align-items-center">${lastStatusBadge}</div>
+                </td>
+                <td>
+                    <div class="action-btn-group">
+                        <button class="btn btn-sm btn-outline-info view-runs-btn" title="Cronologia Runs" data-id="${s.id}" data-fp="${s.fingerprint}">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning edit-source-btn" title="Modifica Configurazione" data-id="${s.id}">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-source-btn" title="Rimuovi Monitoraggio" data-id="${s.id}" data-name="${escapeHtml(s.name)}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input active-toggle-switch" type="checkbox" data-id="${s.id}" ${s.active ? 'checked' : ''} title="Attiva/Disattiva">
+                    </div>
+                </td>
+            `;
 
-        switch (step.position) {
-            case 'top':
-                top = targetRect.top - boxRect.height - margin;
-                left = targetRect.left + (targetRect.width / 2) - (boxRect.width / 2);
-                break;
-            case 'bottom':
-                top = targetRect.bottom + margin;
-                left = targetRect.left + (targetRect.width / 2) - (boxRect.width / 2);
-                break;
-            case 'left':
-                top = targetRect.top + (targetRect.height / 2) - (boxRect.height / 2);
-                left = targetRect.left - boxRect.width - margin;
-                break;
-            case 'right':
-                top = targetRect.top + (targetRect.height / 2) - (boxRect.height / 2);
-                left = targetRect.right + margin;
-                break;
-            default: // center or fallback
-                top = targetRect.top + (targetRect.height / 2) - (boxRect.height / 2);
-                left = targetRect.left + (targetRect.width / 2) - (boxRect.width / 2);
-                break;
+            // Bind events for buttons inside the row
+            tr.querySelector('.view-runs-btn').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                openRunsHistory(btn.dataset.id, btn.dataset.fp);
+            });
+
+            tr.querySelector('.edit-source-btn').addEventListener('click', (e) => {
+                const id = e.currentTarget.dataset.id;
+                openEditModal(id);
+            });
+
+            tr.querySelector('.delete-source-btn').addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                deleteBackupSource(btn.dataset.id, btn.dataset.name);
+            });
+
+            tr.querySelector('.active-toggle-switch').addEventListener('change', (e) => {
+                const id = e.currentTarget.dataset.id;
+                const state = e.currentTarget.checked;
+                toggleActiveState(id, state);
+            });
+
+            sourcesTableBody.appendChild(tr);
+        });
+    }
+
+    function updateDiscoverHeaderIcons() {
+        const discoverHeaderRow = document.getElementById('discover-table-header-row');
+        if (!discoverHeaderRow) return;
+        
+        discoverHeaderRow.querySelectorAll('th.sortable-th').forEach(th => {
+            const sortField = th.dataset.sort;
+            const icon = th.querySelector('i');
+            if (!icon) return;
+            
+            if (discoverSortField === sortField) {
+                if (discoverSortDirection === 'asc') {
+                    icon.className = 'fa-solid fa-sort-up text-warning ms-1';
+                } else {
+                    icon.className = 'fa-solid fa-sort-down text-warning ms-1';
+                }
+            } else {
+                icon.className = 'fa-solid fa-sort text-muted opacity-50 ms-1';
+            }
+        });
+    }
+
+    function renderDiscoveryTable(suggestions) {
+        discoverTableBody.innerHTML = '';
+        updateDiscoverHeaderIcons();
+
+        if (suggestions.length === 0) {
+            discoverTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-square-check text-success fs-3 mb-2"></i>
+                        <p class="m-0">Nessuna nuova sorgente di backup rilevata automaticamente nella cache.</p>
+                        <span class="fs-7 text-secondary">Tutti i backup rilevabili sono già configurati per il monitoraggio.</span>
+                    </td>
+                </tr>
+            `;
+            return;
         }
 
-        // Adjust if out of viewport
-        if (top < 0) top = margin;
-        if (left < 0) left = margin;
-        if (top + boxRect.height > window.innerHeight) top = window.innerHeight - boxRect.height - margin;
-        if (left + boxRect.width > window.innerWidth) left = window.innerWidth - boxRect.width - margin;
+        // Apply Search Query filtering
+        const filteredSuggestions = suggestions.filter(s => {
+            if (discoverSearchQuery) {
+                const term = discoverSearchQuery;
+                const matchesName = s.name.toLowerCase().includes(term);
+                const matchesSender = (s.sender || '').toLowerCase().includes(term);
+                const matchesFp = (s.fingerprint || '').toLowerCase().includes(term);
+                return matchesName || matchesSender || matchesFp;
+            }
+            return true;
+        });
 
-        walkthroughBox.style.top = `${top}px`;
-        walkthroughBox.style.left = `${left}px`;
+        // Apply Sorting
+        if (discoverSortField) {
+            filteredSuggestions.sort((a, b) => {
+                let valA, valB;
+                if (discoverSortField === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (discoverSortField === 'frequency') {
+                    const frequencyWeight = { 'hourly': 1, 'daily': 2, 'weekly': 3 };
+                    valA = frequencyWeight[a.expectedFrequency] || 99;
+                    valB = frequencyWeight[b.expectedFrequency] || 99;
+                } else if (discoverSortField === 'samples') {
+                    valA = a.emailCount || 0;
+                    valB = b.emailCount || 0;
+                } else if (discoverSortField === 'action') {
+                    const aImported = a.isImported || backupSources.some(src => 
+                        src.sender.toLowerCase().trim() === a.sender.toLowerCase().trim() && 
+                        src.fingerprint.toLowerCase().trim() === a.fingerprint.toLowerCase().trim()
+                    );
+                    const bImported = b.isImported || backupSources.some(src => 
+                        src.sender.toLowerCase().trim() === b.sender.toLowerCase().trim() && 
+                        src.fingerprint.toLowerCase().trim() === b.fingerprint.toLowerCase().trim()
+                    );
+                    valA = aImported ? 1 : 0;
+                    valB = bImported ? 1 : 0;
+                }
+                
+                if (valA < valB) return discoverSortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return discoverSortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
 
-        // Update button text
-        if (currentWalkthroughStep === walkthroughSteps.length - 1) {
-            walkthroughNext.textContent = 'Fine';
+        if (filteredSuggestions.length === 0) {
+            discoverTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-magnifying-glass text-secondary fs-3 mb-2"></i>
+                        <p class="m-0">Nessuna sorgente suggerita corrisponde alla ricerca.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        filteredSuggestions.forEach(s => {
+            // Check if already imported
+            const isAlreadyImported = s.isImported || backupSources.some(src => 
+                src.sender.toLowerCase().trim() === s.sender.toLowerCase().trim() && 
+                src.fingerprint.toLowerCase().trim() === s.fingerprint.toLowerCase().trim()
+            );
+
+            const tr = document.createElement('tr');
+            if (isAlreadyImported) {
+                tr.style.opacity = '0.75';
+            }
+
+            let actionBtnHtml = '';
+            if (isAlreadyImported) {
+                actionBtnHtml = `
+                    <button class="btn btn-sm btn-outline-secondary import-suggest-btn" disabled>
+                        <i class="fa-solid fa-circle-check text-success me-1"></i> Già Importato
+                    </button>
+                `;
+            } else {
+                actionBtnHtml = `
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-warning import-suggest-btn" 
+                            data-name="${escapeHtml(s.name)}" 
+                            data-sender="${escapeHtml(s.sender)}" 
+                            data-regex="${escapeHtml(s.subjectRegex)}" 
+                            data-fingerprint="${escapeHtml(s.fingerprint)}" 
+                            data-frequency="${s.expectedFrequency}">
+                            <i class="fa-solid fa-file-import me-1"></i> Importa
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger reject-suggest-btn"
+                            title="Rifiuta (Sposta tutte le email nel cestino)"
+                            data-name="${escapeHtml(s.name)}" 
+                            data-sender="${escapeHtml(s.sender)}" 
+                            data-regex="${escapeHtml(s.subjectRegex)}" 
+                            data-fingerprint="${escapeHtml(s.fingerprint)}">
+                            <i class="fa-solid fa-trash-can"></i> Rifiuta
+                        </button>
+                    </div>
+                `;
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex align-items-center flex-wrap">
+                        <span class="fw-bold text-primary-emphasis"><i class="fa-solid fa-sparkles text-warning me-2"></i>${escapeHtml(s.name)}</span>
+                        ${isAlreadyImported ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-2 fs-8 py-0.5 px-2"><i class="fa-solid fa-circle-check me-1"></i>In Monitoraggio</span>` : ''}
+                    </div>
+                    <div class="fs-7 text-muted d-flex align-items-center gap-2 flex-wrap mt-1">
+                        <span><i class="fa-regular fa-envelope me-1"></i>${escapeHtml(s.sender)}</span>
+                        <span class="text-secondary-subtle">|</span>
+                        <span class="code-font text-info" title="Regex dell'oggetto"><i class="fa-solid fa-code me-1"></i>${escapeHtml(s.subjectRegex)}</span>
+                        <span class="text-secondary-subtle">|</span>
+                        <span class="badge bg-secondary-subtle text-secondary fs-8 code-font px-1.5 py-0" title="Fingerprint">Fp: ${escapeHtml(s.fingerprint)}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge-frequency">${translateFrequency(s.expectedFrequency)}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-warning view-suggested-runs-btn py-1 px-2"
+                        style="border-radius: 30px; font-size: 0.8rem;"
+                        title="Visualizza le email di questa sorgente"
+                        data-name="${escapeHtml(s.name)}"
+                        data-sender="${escapeHtml(s.sender)}"
+                        data-regex="${escapeHtml(s.subjectRegex)}"
+                        data-fingerprint="${escapeHtml(s.fingerprint)}">
+                        <i class="fa-solid fa-envelope-open me-1"></i> ${s.emailCount} email trovate
+                    </button>
+                </td>
+                <td>
+                    ${actionBtnHtml}
+                </td>
+            `;
+
+            if (!isAlreadyImported) {
+                tr.querySelector('.import-suggest-btn').addEventListener('click', (e) => {
+                    const btn = e.currentTarget;
+                    openImportModal(btn.dataset);
+                });
+
+                const rejectBtn = tr.querySelector('.reject-suggest-btn');
+                if (rejectBtn) {
+                    rejectBtn.addEventListener('click', async (e) => {
+                        const btn = e.currentTarget;
+                        const name = btn.dataset.name;
+                        const sender = btn.dataset.sender;
+                        const regex = btn.dataset.regex;
+                        const fingerprint = btn.dataset.fingerprint;
+
+                        if (!confirm(`Sei sicuro di voler rifiutare il flusso "${name}"? Tutte le sue email verranno escluse e spostate nel cestino.`)) {
+                            return;
+                        }
+
+                        try {
+                            const url = `/api/backup/runs/${encodeURIComponent(fingerprint)}?sender=${encodeURIComponent(sender)}&subjectRegex=${encodeURIComponent(regex)}`;
+                            const res = await fetch(url);
+                            const data = await res.json();
+                            const runs = data.runs || [];
+
+                            if (runs.length === 0) {
+                                showToast('Nessuna email trovata per questo suggerimento.', 'fa-circle-exclamation', 'bg-warning');
+                                return;
+                            }
+
+                            let successCount = 0;
+                            for (const run of runs) {
+                                const excludeRes = await fetch('/api/backup/exclude-email', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ emailId: run.id })
+                                });
+                                const excludeData = await excludeRes.json();
+                                if (excludeData.success) {
+                                    successCount++;
+                                }
+                            }
+
+                            showToast(`Escluse ${successCount} email di "${name}".`, 'fa-trash-can', 'bg-warning');
+                            fetchAutoDiscovery();
+                            fetchExcludedEmails();
+                        } catch (err) {
+                            console.error('Error rejecting suggested flow:', err);
+                            showToast('Errore durante il rifiuto del flusso.', 'fa-circle-exclamation', 'bg-danger');
+                        }
+                    });
+                }
+            }
+
+            const viewSuggestBtn = tr.querySelector('.view-suggested-runs-btn');
+            if (viewSuggestBtn) {
+                viewSuggestBtn.addEventListener('click', (e) => {
+                    const btn = e.currentTarget;
+                    openSuggestedRunsHistory(
+                        btn.dataset.fingerprint,
+                        btn.dataset.sender,
+                        btn.dataset.regex,
+                        btn.dataset.name
+                    );
+                });
+            }
+
+            discoverTableBody.appendChild(tr);
+        });
+    }
+
+    // -------------------------------------------------------------
+    // Modal Actions Helper
+    // -------------------------------------------------------------
+    function openEditModal(id) {
+        const s = backupSources.find(src => src.id === id);
+        if (!s) return;
+
+        document.getElementById('sourceModalLabel').innerHTML = '<i class="fa-solid fa-pen-to-square text-warning me-2"></i>Modifica Sorgente Backup';
+        document.getElementById('form-source-id').value = s.id;
+        document.getElementById('form-source-name').value = s.name;
+        document.getElementById('form-source-sender').value = s.sender;
+        document.getElementById('form-source-frequency').value = s.expectedFrequency;
+        document.getElementById('form-source-subject-regex').value = s.subjectRegex;
+        document.getElementById('form-source-active').checked = s.active;
+        hideRegexAssistant();
+
+        sourceModal.show();
+        testCurrentRegex();
+    }
+
+    function openImportModal(data) {
+        document.getElementById('sourceModalLabel').innerHTML = '<i class="fa-solid fa-file-import text-warning me-2"></i>Importa Sorgente Suggerita';
+        document.getElementById('form-source-id').value = '';
+        document.getElementById('form-source-name').value = data.name;
+        document.getElementById('form-source-sender').value = data.sender;
+        document.getElementById('form-source-frequency').value = data.frequency;
+        document.getElementById('form-source-subject-regex').value = data.regex;
+        document.getElementById('form-source-active').checked = true;
+        hideRegexAssistant();
+
+        sourceModal.show();
+        testCurrentRegex();
+    }
+
+    // -------------------------------------------------------------
+    // Runs History Panel Log (Offcanvas Drawer)
+    // -------------------------------------------------------------
+    async function openRunsHistory(id, fingerprint) {
+        const source = backupSources.find(s => s.id === id);
+        if (source) {
+            document.getElementById('offcanvas-flow-name').innerHTML = `${escapeHtml(source.name)} <span class="badge bg-success-subtle text-success border border-success-subtle fs-8 ms-2">Monitorato</span>`;
         } else {
-            walkthroughNext.textContent = 'Avanti';
+            document.getElementById('offcanvas-flow-name').textContent = 'Storico Backup';
         }
-    }
-
-    function startWalkthrough() {
-        showWalkthroughStep(0);
-    }
-
-    function endWalkthrough() {
-        walkthroughBox.style.display = 'none';
-        walkthroughOverlay.style.display = 'none';
-        currentWalkthroughStep = 0;
-        walkthroughNext.textContent = 'Avanti'; // Reset button text
-    }
-
-    aiutoButton.addEventListener('click', startWalkthrough);
-    walkthroughNext.addEventListener('click', () => {
-        if (currentWalkthroughStep === walkthroughSteps.length - 1) {
-            endWalkthrough();
+        
+        // Populate Mini Statistics header
+        if (source && source.stats) {
+            document.getElementById('offcanvas-stat-mean').textContent = formatMinutes(source.stats.mean);
+            document.getElementById('offcanvas-stat-max').textContent = formatMinutes(source.stats.maxTime);
+            document.getElementById('offcanvas-stat-std').textContent = `${source.stats.stdDev} min`;
         } else {
-            showWalkthroughStep(currentWalkthroughStep + 1);
+            document.getElementById('offcanvas-stat-mean').textContent = '--';
+            document.getElementById('offcanvas-stat-max').textContent = '--';
+            document.getElementById('offcanvas-stat-std').textContent = '--';
         }
-    });
-    walkthroughEnd.addEventListener('click', endWalkthrough);
 
-    // Close walkthrough if overlay is clicked
-    walkthroughOverlay.addEventListener('click', endWalkthrough);
+        const runsContainer = document.getElementById('offcanvas-runs-container');
+        runsContainer.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                <p class="mt-2 fs-7">Caricamento log delle e-mail...</p>
+            </div>
+        `;
+        
+        runsOffcanvas.show();
 
-    const fullEmailModal = document.getElementById('full-email-modal');
-    const fullEmailBody = document.getElementById('full-email-body');
-    const closeFullEmailButton = document.getElementById('close-full-email');
+        try {
+            const res = await fetch(`/api/backup/runs/${encodeURIComponent(id)}`);
+            const data = await res.json();
+            const runs = data.runs || [];
+            
+            runsContainer.innerHTML = '';
+            if (runs.length === 0) {
+                runsContainer.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-inbox fs-3 mb-2"></i>
+                        <p class="fs-7 m-0">Nessuna e-mail trovata nella cache per questo fingerprint.</p>
+                    </div>
+                `;
+                return;
+            }
 
-    function openFullScreenEmail(email) {
+            runs.forEach(run => {
+                const card = document.createElement('div');
+                card.className = `run-log-card run-${run.status}`;
+                
+                const dateObj = new Date(parseInt(run.internalDate));
+                const dateStr = dateObj.toLocaleString('it-IT');
+                const relTime = getRelativeTimeStr(dateObj);
+
+                let statusBadgeClass = 'status-success';
+                let statusLabel = 'SUCCESSO';
+                if (run.status === 'failed') {
+                    statusBadgeClass = 'status-failed';
+                    statusLabel = 'FALLITO';
+                } else if (run.status === 'warning') {
+                    statusBadgeClass = 'status-warning';
+                    statusLabel = 'WARNING';
+                }
+
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2 fs-7">
+                        <span class="run-status-badge ${statusBadgeClass}">${statusLabel}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted code-font">${dateStr} (${relTime})</span>
+                            <button class="btn btn-sm btn-link text-danger p-0 exclude-email-btn" title="Escludi (Sposta nel Cestino)" data-id="${run.id}">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="fw-semibold fs-7 mb-1 text-primary-emphasis text-truncate" title="${escapeHtml(run.subject)}">
+                        ${escapeHtml(run.subject)}
+                    </div>
+                    <div class="text-muted fs-8 text-truncate">
+                        ${escapeHtml(run.snippet || 'Senza corpo e-mail')}
+                    </div>
+                `;
+
+                // Add click listener to open detailed email body modal
+                card.addEventListener('click', () => {
+                    openEmailDetailModal(run);
+                });
+
+                // Add click listener to exclude button
+                card.querySelector('.exclude-email-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation(); // Prevent opening detail modal
+                    if (!confirm('Sei sicuro di voler escludere questa email? Verrà spostata nel cestino.')) return;
+                    try {
+                        const res = await fetch('/api/backup/exclude-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ emailId: run.id })
+                        });
+                        const resData = await res.json();
+                        if (resData.success) {
+                            showToast('Email esclusa con successo.', 'fa-trash-can', 'bg-warning');
+                            openRunsHistory(id, fingerprint);
+                            fetchBackupSources();
+                            fetchAutoDiscovery();
+                            fetchExcludedEmails();
+                        } else {
+                            showToast('Errore durante l\'esclusione: ' + (resData.message || 'Errore sconosciuto'), 'fa-circle-exclamation', 'bg-danger');
+                        }
+                    } catch (err) {
+                        console.error('Error excluding email:', err);
+                        showToast('Errore di rete.', 'fa-circle-exclamation', 'bg-danger');
+                    }
+                });
+
+                runsContainer.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error fetching runs history:', error);
+            runsContainer.innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="fa-solid fa-circle-exclamation fs-3 mb-2"></i>
+                    <p class="fs-7 m-0">Errore durante il recupero dello storico.</p>
+                </div>
+            `;
+        }
+    }
+
+    async function openSuggestedRunsHistory(fingerprint, sender, subjectRegex, name) {
+        document.getElementById('offcanvas-flow-name').innerHTML = `${escapeHtml(name)} <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-8 ms-2">Suggerito</span>`;
+        
+        // Populate Mini Statistics header (empty/defaults for suggested flows)
+        document.getElementById('offcanvas-stat-mean').textContent = '--';
+        document.getElementById('offcanvas-stat-max').textContent = '--';
+        document.getElementById('offcanvas-stat-std').textContent = '--';
+
+        const runsContainer = document.getElementById('offcanvas-runs-container');
+        runsContainer.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                <p class="mt-2 fs-7">Caricamento log delle e-mail...</p>
+            </div>
+        `;
+        
+        runsOffcanvas.show();
+
+        try {
+            const url = `/api/backup/runs/${encodeURIComponent(fingerprint)}?sender=${encodeURIComponent(sender)}&subjectRegex=${encodeURIComponent(subjectRegex)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const runs = data.runs || [];
+            
+            runsContainer.innerHTML = '';
+            if (runs.length === 0) {
+                runsContainer.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-inbox fs-3 mb-2"></i>
+                        <p class="fs-7 m-0">Nessuna e-mail trovata nella cache per questa sorgente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            runs.forEach(run => {
+                const card = document.createElement('div');
+                card.className = `run-log-card run-${run.status}`;
+                
+                const dateObj = new Date(parseInt(run.internalDate));
+                const dateStr = dateObj.toLocaleString('it-IT');
+                const relTime = getRelativeTimeStr(dateObj);
+
+                let statusBadgeClass = 'status-success';
+                let statusLabel = 'SUCCESSO';
+                if (run.status === 'failed') {
+                    statusBadgeClass = 'status-failed';
+                    statusLabel = 'FALLITO';
+                } else if (run.status === 'warning') {
+                    statusBadgeClass = 'status-warning';
+                    statusLabel = 'WARNING';
+                }
+
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2 fs-7">
+                        <span class="run-status-badge ${statusBadgeClass}">${statusLabel}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted code-font">${dateStr} (${relTime})</span>
+                            <button class="btn btn-sm btn-link text-danger p-0 exclude-email-btn" title="Escludi (Sposta nel Cestino)" data-id="${run.id}">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="fw-semibold fs-7 mb-1 text-primary-emphasis text-truncate" title="${escapeHtml(run.subject)}">
+                        ${escapeHtml(run.subject)}
+                    </div>
+                    <div class="text-muted fs-8 text-truncate">
+                        ${escapeHtml(run.snippet || 'Senza corpo e-mail')}
+                    </div>
+                `;
+
+                // Add click listener to open detailed email body modal
+                card.addEventListener('click', () => {
+                    openEmailDetailModal(run);
+                });
+
+                // Add click listener to exclude button
+                card.querySelector('.exclude-email-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation(); // Prevent opening detail modal
+                    if (!confirm('Sei sicuro di voler escludere questa email? Verrà spostata nel cestino.')) return;
+                    try {
+                        const res = await fetch('/api/backup/exclude-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ emailId: run.id })
+                        });
+                        const resData = await res.json();
+                        if (resData.success) {
+                            showToast('Email esclusa con successo.', 'fa-trash-can', 'bg-warning');
+                            openSuggestedRunsHistory(fingerprint, sender, subjectRegex, name);
+                            fetchAutoDiscovery();
+                            fetchExcludedEmails();
+                        } else {
+                            showToast('Errore durante l\'esclusione: ' + (resData.message || 'Errore sconosciuto'), 'fa-circle-exclamation', 'bg-danger');
+                        }
+                    } catch (err) {
+                        console.error('Error excluding email:', err);
+                        showToast('Errore di rete.', 'fa-circle-exclamation', 'bg-danger');
+                    }
+                });
+
+                runsContainer.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error fetching runs history:', error);
+            runsContainer.innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="fa-solid fa-circle-exclamation fs-3 mb-2"></i>
+                    <p class="fs-7 m-0">Errore durante il recupero dello storico.</p>
+                </div>
+            `;
+        }
+    }
+
+    function openEmailDetailModal(email) {
+        document.getElementById('email-detail-subject').textContent = email.subject;
+        document.getElementById('email-detail-from').textContent = email.from;
+        
+        const dateObj = new Date(parseInt(email.internalDate));
+        document.getElementById('email-detail-date').textContent = dateObj.toLocaleString('it-IT');
+        
+        // Status badge configuration
+        const badge = document.getElementById('email-detail-status-badge');
+        badge.className = 'badge';
+        if (email.status === 'failed') {
+            badge.classList.add('bg-danger');
+            badge.textContent = 'FALLITO';
+        } else if (email.status === 'warning') {
+            badge.classList.add('bg-warning', 'text-dark');
+            badge.textContent = 'WARNING';
+        } else {
+            badge.classList.add('bg-success');
+            badge.textContent = 'SUCCESS';
+        }
+
+        // Load content: prefer HTML, fall back to snippet or body
+        const container = document.getElementById('email-detail-body');
         if (email.bodyHtml) {
-            fullEmailBody.innerHTML = DOMPurify.sanitize(email.bodyHtml);
+            container.innerHTML = email.bodyHtml;
+        } else if (email.body) {
+            container.textContent = email.body;
         } else {
-            fullEmailBody.textContent = email.body;
+            container.textContent = email.snippet || 'Nessun contenuto disponibile.';
         }
-        fullEmailModal.style.display = 'flex';
+
+        emailDetailModal.show();
     }
 
-    function closeFullScreenEmail() {
-        fullEmailModal.style.display = 'none';
-        fullEmailBody.innerHTML = '';
+    // -------------------------------------------------------------
+    // Helper Format Utilities
+    // -------------------------------------------------------------
+    function formatMinutes(minutes) {
+        if (minutes === undefined || minutes === null) return '--:--';
+        const wrapped = ((minutes % 1440) + 1440) % 1440;
+        const h = Math.floor(wrapped / 60).toString().padStart(2, '0');
+        const m = Math.floor(wrapped % 60).toString().padStart(2, '0');
+        
+        // If minutes wrap into next day, add a +1d flag
+        if (minutes >= 1440) {
+            return `${h}:${m} (+1g)`;
+        }
+        return `${h}:${m}`;
     }
 
-    closeFullEmailButton.addEventListener('click', closeFullScreenEmail);
-
-    // Close modal on escape key press
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && fullEmailModal.style.display === 'flex') {
-            closeFullScreenEmail();
+    function translateFrequency(freq) {
+        switch (freq) {
+            case 'hourly': return 'Orario';
+            case 'daily': return 'Giornaliero';
+            case 'weekly': return 'Settimanale';
+            default: return freq;
         }
-    });
+    }
 
-    const toggleCalendarPanelButton = document.getElementById('toggle-calendar-panel');
-    const calendarPanel = document.getElementById('calendar-panel');
+    function getRelativeTimeStr(date) {
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        if (seconds < 60) return 'ora';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} min fa`;
+        const hours = Math.floor(minutes / 60);
+        
+        // Calculate date boundaries (set to midnight)
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        // Difference in days by calculating calendar date difference
+        const diffMs = startOfToday - startOfDate;
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            return `${hours} ore fa`;
+        }
+        if (diffDays === 1) {
+            return 'ieri';
+        }
+        if (diffDays === 2) {
+            return 'l\'altro ieri';
+        }
+        return `${diffDays} giorni fa`;
+    }
 
-    toggleCalendarPanelButton.addEventListener('click', () => {
-        calendarPanel.classList.toggle('open');
-    });
+    function escapeHtml(string) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(string).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    // -------------------------------------------------------------
+    // Toast Notification System
+    // -------------------------------------------------------------
+    function showToast(message, iconClass = 'fa-circle-info', bgClass = 'bg-info') {
+        const toastMessageEl = document.getElementById('toast-message');
+        const toastIconEl = document.getElementById('toast-icon');
+        
+        toastMessageEl.textContent = message;
+        
+        // Set icon class
+        toastIconEl.className = `fa-solid ${iconClass} me-2 fs-5`;
+        
+        // Remove prior background colors
+        toastEl.classList.remove('bg-info', 'bg-success', 'bg-warning', 'bg-danger', 'text-dark');
+        toastEl.classList.add(bgClass);
+        if (bgClass.includes('warning')) {
+            toastEl.classList.add('text-dark');
+        }
+        
+        appToast.show();
+    }
 });

@@ -50,5 +50,82 @@
       "parentId": null,
       "createdAt": "2026-03-20T09:51:36.302Z"
     }
+  ],
+  "19e499ed9dc4f4ed": [],
+  "19e4e8fa7f45d08d": [],
+  "19e5dfe43d38274d": [
+    {
+      "id": "1779693696038",
+      "userId": "francesco.arcangeli",
+      "content": "#102335 - Ticket in gestione",
+      "parentId": null,
+      "createdAt": "2026-05-25T07:21:36.038Z"
+    }
+  ],
+  "19e96d41b4a849ad": [
+    {
+      "id": "1780647854467",
+      "userId": "loris.simonetti",
+      "content": "c'è un email del 29 maggio sullo stesso problema ma senza risposte",
+      "parentId": null,
+      "createdAt": "2026-06-05T08:24:14.467Z"
+    }
+  ],
+  "19e92ee82ee6e65d": [
+    {
+      "id": "1780649445117",
+      "userId": "loris.simonetti",
+      "content": "gestita da Riccardo Trillini",
+      "parentId": null,
+      "createdAt": "2026-06-05T08:50:45.117Z"
+    },
+    {
+      "id": "1780650168798",
+      "userId": "riccardo.ratini",
+      "content": "Non esiste. O è Riccardo Tullio o Giorgio Trillini.",
+      "parentId": null,
+      "createdAt": "2026-06-05T09:02:48.798Z"
+    }
+  ],
+  "19ea6fbd4283dd3d": [
+    {
+      "id": "1780920600420",
+      "userId": "loris.simonetti",
+      "content": "stesso discorso dell'email sotto, chi è che le risolve? per capire dove aprire i ticket",
+      "parentId": null,
+      "createdAt": "2026-06-08T12:10:00.420Z"
+    }
+  ],
+  "19eba9428b0bcebc": [
+    {
+      "id": "1781246763700",
+      "userId": "loris.simonetti",
+      "content": "Non segnare letto",
+      "parentId": null,
+      "createdAt": "2026-06-12T06:46:03.700Z"
+    }
+  ],
+  "19ee0462d065fabd": [
+    {
+      "id": "1781880187746",
+      "userId": "loris.simonetti",
+      "content": "Delivery?",
+      "parentId": null,
+      "createdAt": "2026-06-19T14:43:07.746Z"
+    },
+    {
+      "id": "1781880269486",
+      "userId": "marco.malatesta",
+      "content": "ganzo! No è sviluppo alyante, ho già risposto che non siamo i destinatari del sollecito",
+      "parentId": null,
+      "createdAt": "2026-06-19T14:44:29.486Z"
+    },
+    {
+      "id": "1781880320179",
+      "userId": "loris.simonetti",
+      "content": "ah ok",
+      "parentId": "1781880269486",
+      "createdAt": "2026-06-19T14:45:20.179Z"
+    }
   ]
 }

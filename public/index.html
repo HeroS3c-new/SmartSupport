@@ -3,8 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; connect-src 'self' https://smartsupport.maestrale.it:5001/api/health https://localhost:5001 https://127.0.0.1:5001 https://10.100.200.208:5001; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net 'unsafe-inline' https://unpkg.com; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; img-src 'self' data: https:; frame-src https://calendar.google.com/ https://mail.google.com/;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; 
+               connect-src 'self' https://smartsupport.maestrale.it:5001/api/health https://localhost:5001 https://127.0.0.1:5001 https://10.100.200.208:5001 https://smartsupport.maestrale.it:5002/api/health https://localhost:5002 https://127.0.0.1:5002 https://10.100.200.208:5002 https://cdn.jsdelivr.net; 
+               font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://frontend-cdn.perplexity.ai; 
+               style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net 'unsafe-inline' https://unpkg.com; 
+               script-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; 
+               img-src 'self' data: https: cid: https://*.googleusercontent.com; 
+               frame-src https://calendar.google.com/ https://mail.google.com/;
+               upgrade-insecure-requests;">
     <script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@11.0.0/dist/css/shepherd.css" />
     <script src="https://cdn.jsdelivr.net/npm/shepherd.js@11.0.0/dist/shepherd.min.js"></script>
@@ -17,41 +23,63 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="backup/style.css">
+    <link rel="stylesheet" href="redmine.css">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <!-- Grand Welcome Screen -->
+    <div id="grand-welcome-screen" class="grand-welcome-screen" style="display: none;">
+        <div class="welcome-content">
+            <h1 id="welcome-title"></h1>
+            <p id="welcome-subtitle"></p>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="header-title">
                 <img src="mg_logo.png" alt="MaeSkimmer Logo" class="logo">
-                <h1>SmartSupport</h1>
+                <h1>SmartSupport <span id="app-version" class="badge bg-warning text-dark ms-2 align-middle" style="font-weight: 500; font-size: 0.85rem !important;"></span><span id="debug-badge" class="badge bg-danger text-white ms-2 align-middle d-none" style="font-weight: 500; font-size: 0.85rem !important;">DEBUG</span></h1>
             </div>
             <div class="header-controls">
-                <div class="gemini-settings">
-                    <input type="password" id="gemini-api-key" placeholder="Gemini API Key"
-                        class="form-control form-control-sm">
-                    <button id="evaluate-importance-btn" class="btn btn-sm btn-primary">Valuta Importanza</button>
-                </div>
-                <button id="toggle-notes-panel" class="btn btn-outline-secondary" title="Note">
-                    <i class="fa-solid fa-note-sticky"></i> Note
-                </button>
                 <button id="toggle-calendar-panel" class="btn btn-outline-secondary" title="Calendario">
-                    <i class="fa-solid fa-calendar-days"></i> Calendario
+                    <i class="fa-solid fa-calendar-days"></i> <span class="btn-text">Calendario</span>
                 </button>
                 <button id="toggle-chat-panel" class="btn btn-outline-secondary" title="Chat">
-                    <i class="fa-brands fa-rocketchat"></i> Chat
+                    <i class="fa-brands fa-rocketchat"></i> <span class="btn-text">Chat</span>
                     <span id="chat-badge" class="badge bg-danger rounded-pill" style="display: none;">0</span>
                 </button>
-                <button id="aiuto-button" class="btn btn-outline-info" title="Help">
-                    <i class="fa-solid fa-question-circle"></i> Aiuto
+                <button id="redmine-dashboard-btn" class="btn btn-outline-warning" title="Tickets">
+                    <i class="fa-solid fa-chart-pie"></i> <span class="btn-text">Tickets</span>
                 </button>
+                <button id="autoblock-dashboard-btn" class="btn btn-outline-danger" title="AutoBlock Dashboard">
+                    <i class="fa-solid fa-shield-halved"></i> <span class="btn-text">AutoBlock</span>
+                </button>
+                <button id="aiuto-button" class="btn btn-outline-info" title="Help">
+                    <i class="fa-solid fa-question-circle"></i> <span class="btn-text">Aiuto</span>
+                </button>
+                <button id="changelog-btn" class="btn btn-outline-success" title="Changelog">
+                    <i class="fa-solid fa-scroll"></i> <span class="btn-text">Changelog</span>
+                </button>
+                <div class="active-users-wrapper position-relative d-flex align-items-center me-2" id="active-users-wrapper">
+                    <div class="active-users-pill d-flex align-items-center" id="active-users-pill">
+                        <i class="fa-solid fa-circle text-success me-1 active-users-pulse" style="font-size: 0.6rem;"></i>
+                        <span id="active-users-count" class="me-1">0</span> online
+                    </div>
+                    <div class="active-users-dropdown" id="active-users-dropdown">
+                        <div class="active-users-dropdown-header">Utenti Collegati</div>
+                        <ul id="active-users-list" class="active-users-list"></ul>
+                    </div>
+                </div>
                 <div class="llm-status-wrapper d-flex align-items-center me-2">
                     <div class="status-face" title="System Health">
                         <div class="status-eyes">
@@ -62,11 +90,25 @@
                         <div id="status-mouth" class="status-mouth"></div>
                     </div>
                 </div>
+                <button id="toggle-sent-emails-panel" class="btn btn-outline-secondary" title="Email Inviate">
+                    <i class="fa-solid fa-paper-plane"></i> <span class="btn-text">Email Inviate</span>
+                </button>
                 <button id="account-window-btn" class="btn btn-outline-secondary">
-                    <i class="fa-solid fa-circle-user"></i> Account
+                    <i class="fa-solid fa-circle-user"></i> <span class="btn-text">Account</span>
                 </button>
             </div>
         </header>
+
+        <!-- Alert Modalità Debug -->
+        <div id="debug-mode-banner" class="alert alert-warning d-none align-items-center justify-content-between mt-2 shadow-sm" style="padding: 10px 15px; border-left: 5px solid #ffc107; font-family: 'Poppins', sans-serif; margin-bottom: 10px;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                <div>
+                    <strong>Modalità Debug Attiva:</strong> Le email non vengono realmente inviate ma sono solo scritte nel file di log (accessibile da interfaccia).
+                </div>
+            </div>
+            <button id="disable-debug-banner-btn" class="btn btn-sm btn-outline-dark">Passa a Produzione</button>
+        </div>
 
         <div id="notes-panel" class="notes-panel">
             <div class="notes-panel-header">
@@ -89,56 +131,175 @@
                 style="border: 0" width="100%" height="100%" frameborder="0" scrolling="no"></iframe>
         </div>
 
+        <div id="sent-emails-panel" class="sent-emails-panel">
+            <div class="sent-emails-panel-header d-flex justify-content-between align-items-center mb-3">
+                <h3 class="m-0" style="font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 600;"><i class="fa-solid fa-paper-plane me-2 text-primary"></i>Email Inviate</h3>
+                <button id="close-sent-emails-panel" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="sent-emails-controls mb-3">
+                <div class="input-group mb-2">
+                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="sent-emails-search" class="form-control form-control-sm" placeholder="Cerca email inviate..." style="font-size: 0.85rem;">
+                </div>
+                <button id="refresh-sent-emails-btn" class="btn btn-sm btn-outline-primary w-100" style="font-size: 0.85rem;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Aggiorna Lista
+                </button>
+            </div>
+            <div id="sent-emails-list" class="sent-emails-list overflow-y-auto flex-grow-1">
+                <!-- Le email verranno caricate qui dinamicamente -->
+            </div>
+        </div>
+
         <main>
             <div class="toolbar">
-                <div class="toolbar-group">
-                    <span id="email-stats"></span>
-                    <div class="email-limit-selector">
-                        <label for="email-limit">Mostra:</label>
-                        <select id="email-limit">
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                            <option value="200">200</option>
-                            <option value="500">500</option>
-                        </select>
-                    </div>
-                    <div class="refresh-control">
-                        <button id="refresh-emails-btn" class="btn btn-sm btn-outline-primary" title="Refresh manuale">
-                            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                <div class="toolbar-content" id="toolbar-content">
+                    <!-- Section 1: Stats, limit, refresh -->
+                    <div class="toolbar-group">
+                        <span id="email-stats"></span>
+                        <div class="email-limit-selector">
+                            <label for="email-limit">Mostra:</label>
+                            <select id="email-limit">
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="200" selected>200</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                        <div class="refresh-control">
+                            <button id="refresh-emails-btn" class="btn btn-sm btn-outline-primary"
+                                title="Refresh manuale">
+                                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                            </button>
+                        </div>
+                        <button id="toolbar-toggle-btn" class="btn btn-outline-secondary" title="Filtro" style="display: none;">
+                            <i class="fa-solid fa-filter"></i>
                         </button>
                     </div>
-                </div>
-                <div class="toolbar-group">
-                    <input type="checkbox" id="select-all-checkbox" />
-                    <label for="select-all-checkbox">Seleziona Tutto</label>
-                    <input type="checkbox" id="select-current-tab-checkbox" />
-                    <label for="select-current-tab-checkbox">Seleziona Tab Corrente</label>
-                    <input type="checkbox" id="select-useless-checkbox" />
-                    <label for="select-useless-checkbox">Seleziona Potenziali Inutili</label>
-                </div>
-                <div class="toolbar-group">
-                    <button id="sort-score-button" class="btn btn-secondary">Ordina per Importanza</button>
-                    <button id="sort-date-button" class="btn btn-secondary">Ordina per Data</button>
-                </div>
-                <div class="toolbar-group">
-                    <button id="mark-read-button" class="btn btn-primary">Segna come Lette</button>
-                </div>
-                <div class="toolbar-group flex-grow-1">
-                    <div class="search-wrapper">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="email-search-input" placeholder="Cerca tra le email..."
-                            class="form-control">
-                    </div>
-                    <div class="view-mode-switch ms-2">
-                        <button class="view-btn active" data-view="details" title="Visualizzazione Dettagli">
-                            <i class="fa-solid fa-list"></i>
-                        </button>
-                        <button class="view-btn" data-view="cards" title="Visualizzazione Card">
-                            <i class="fa-solid fa-table-cells"></i>
-                        </button>
-                    </div>
-                </div>
 
+                    <!-- Section 2: Filtri Dropdown -->
+                    <div class="toolbar-group dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="filters-dropdown-link">
+                            <i class="fa-solid fa-filter"></i> Filtri
+                        </a>
+                        <div class="dropdown-menu p-3" aria-labelledby="filters-dropdown-link" style="min-width: 280px; box-shadow: var(--shadow); border-radius: 8px;">
+                            <!-- Filtro Testuale -->
+                            <div class="mb-3">
+                                <label for="email-search-input" class="form-label font-weight-bold mb-1" style="font-size: 0.85rem;">Cerca testo:</label>
+                                <div class="search-wrapper position-relative">
+                                    <i class="fa-solid fa-magnifying-glass position-absolute" style="left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-light-color);"></i>
+                                    <input type="text" id="email-search-input" placeholder="Cerca tra le email..." class="form-control" style="padding-left: 30px; font-size: 0.85rem;">
+                                </div>
+                            </div>
+                            <!-- Filtro Importanza -->
+                            <div class="mb-3">
+                                <label class="form-label font-weight-bold mb-1" style="font-size: 0.85rem;">Importanza:</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select id="importance-min-select" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                                        <option value="0" selected>Min: 0%</option>
+                                        <option value="10">10%</option>
+                                        <option value="20">20%</option>
+                                        <option value="30">30%</option>
+                                        <option value="40">40%</option>
+                                        <option value="50">50%</option>
+                                        <option value="60">60%</option>
+                                        <option value="70">70%</option>
+                                        <option value="80">80%</option>
+                                        <option value="90">90%</option>
+                                        <option value="100">100%</option>
+                                    </select>
+                                    <span style="font-size: 0.8rem; color: var(--text-light-color);">a</span>
+                                    <select id="importance-max-select" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                                        <option value="0">0%</option>
+                                        <option value="10">10%</option>
+                                        <option value="20">20%</option>
+                                        <option value="30">30%</option>
+                                        <option value="40">40%</option>
+                                        <option value="50">50%</option>
+                                        <option value="60">60%</option>
+                                        <option value="70">70%</option>
+                                        <option value="80">80%</option>
+                                        <option value="90">90%</option>
+                                        <option value="100" selected>Max: 100%</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Filtro Categoria -->
+                            <div class="mb-1">
+                                <label for="gmail-category-select" class="form-label font-weight-bold mb-1" style="font-size: 0.85rem;">Categoria:</label>
+                                <select id="gmail-category-select" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                                    <option value="ALL">Tutte</option>
+                                    <option value="CUSTOM_LABEL">Scrivi...</option>
+                                </select>
+                                <input type="text" id="custom-label-input" class="form-control form-control-sm mt-2" placeholder="Nome etichetta Gmail…" style="display:none; font-size: 0.8rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Seleziona Dropdown -->
+                    <div class="toolbar-group dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="select-dropdown-link">
+                            <i class="fa-solid fa-square-check"></i> Seleziona
+                        </a>
+                        <div class="dropdown-menu p-3" aria-labelledby="select-dropdown-link" style="min-width: 250px; box-shadow: var(--shadow); border-radius: 8px;">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="select-filtered-checkbox" class="form-check-input" />
+                                <label for="select-filtered-checkbox" class="form-check-label" style="font-size: 0.85rem; cursor: pointer;">Seleziona mail filtrate</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="select-all-checkbox" class="form-check-input" />
+                                <label for="select-all-checkbox" class="form-check-label" style="font-size: 0.85rem; cursor: pointer;">Seleziona tutto</label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input type="checkbox" id="select-useless-checkbox" class="form-check-input" />
+                                <label for="select-useless-checkbox" class="form-check-label" style="font-size: 0.85rem; cursor: pointer;">Inutili</label>
+                            </div>
+                            <hr class="dropdown-divider">
+                            <div class="text-center pt-2">
+                                <button id="read-emails-btn" class="btn btn-sm btn-outline-primary w-100" title="Segna come lette">
+                                    <i class="fa-solid fa-envelope-open-text"></i> <span class="btn-text">Segna Lette</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Ordina Dropdown -->
+                    <div class="toolbar-group dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" id="sort-dropdown-link">
+                            <i class="fa-solid fa-arrow-down-wide-short"></i> Ordina
+                        </a>
+                        <div class="dropdown-menu p-3" aria-labelledby="sort-dropdown-link" style="min-width: 220px; box-shadow: var(--shadow); border-radius: 8px;">
+                            <div class="mb-3">
+                                <label for="sort-select" class="form-label font-weight-bold mb-1" style="font-size: 0.85rem;">Ordina per:</label>
+                                <select id="sort-select" class="form-select form-select-sm" style="font-size: 0.8rem;">
+                                    <option value="date" selected>Data</option>
+                                    <option value="score">Importanza</option>
+                                </select>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span style="font-size: 0.85rem; font-weight: 500;">Direzione:</span>
+                                <button id="sort-direction-btn" class="btn btn-sm btn-outline-secondary" title="Inverti ordinamento" style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 32px;">
+                                    <i id="sort-direction-icon" class="fa-solid fa-arrow-down-wide-short"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Utilities (Valuta importanza & view toggle) -->
+                    <div class="toolbar-group flex-grow-1 justify-content-end">
+                        <button id="evaluate-importance-btn" class="btn btn-sm btn-primary"
+                            title="Valuta Importanza con Gemini">
+                            <i class="fa-solid fa-brain"></i> <span class="btn-text">Valuta Importanza</span>
+                        </button>
+                        <div class="view-mode-switch ms-2">
+                            <button class="view-btn active" data-view="details" title="Dettagli">
+                                <i class="fa-solid fa-list"></i>
+                            </button>
+                            <button class="view-btn" data-view="cards" title="Card">
+                                <i class="fa-solid fa-table-cells"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="tab-container">
                 <button id="human-tab" class="nav-link active">Human <span id="human-count"
@@ -147,25 +308,29 @@
                         class="badge bg-secondary">0</span></button>
                 <button id="cloud-monitor-tab" class="nav-link">Cloud Monitor <span id="cloud-monitor-count"
                         class="badge bg-secondary">0</span></button>
+                <button id="read-emails-tab" class="nav-link">
+                    <i class="fa-solid fa-envelope-open me-1"></i> Email Lette <span id="read-emails-count"
+                        class="badge bg-secondary">0</span>
+                </button>
+                <button id="backup-tab" class="nav-link">
+                    <i class="fa-solid fa-server me-1"></i> Backup Hub <span id="backup-warning-badge"
+                        class="badge bg-danger rounded-pill d-none">!</span>
+                </button>
+                <button id="activity-tab" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Cronologia Attività
+                </button>
+                <div id="stats-tab-wrapper" class="stats-tab-wrapper">
+                    <button id="stats-tab-toggle" class="btn-stats-toggle" title="Nascondi Analisi Nerd">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button id="stats-tab" class="nav-link">
+                        <i class="fa-solid fa-chart-pie me-1"></i> Analisi Nerd
+                    </button>
+                </div>
             </div>
             <div id="sticky-notes-container" class="sticky-notes-container"></div>
 
             <div class="category-filter-container">
-                <div id="category-filter-wrapper" class="category-filter">
-                    <label for="gmail-category-select">
-                        <i class="fa-solid fa-filter"></i> Categoria:
-                    </label>
-
-                    <select id="gmail-category-select" class="form-select form-select-sm">
-                        <option value="ALL">Tutte</option>
-                        <option value="CUSTOM_LABEL">Scrivi...</option>
-                    </select>
-
-                    <!-- input nascosto per il nome etichetta -->
-                    <input type="text" id="custom-label-input" class="form-control form-control-sm mt-1"
-                        placeholder="Nome etichetta Gmail…" style="display:none;">
-                </div>
-
                 <div id="cloud-hours-filter-wrapper" class="category-filter" style="display: none;">
                     <label for="cloud-hours-select">
                         <i class="fa-solid fa-clock"></i> Ore Eventi:
@@ -198,10 +363,819 @@
                 <div id="cloud-monitor-highlighted-emails-container"></div>
                 <div id="cloud-monitor-email-list-container"></div>
             </div>
+            <div id="read-emails-view" style="display: none;">
+                <div id="read-emails-list-container"></div>
+            </div>
+
+            <!-- Backup Hub Dashboard View -->
+            <div id="backup-view" class="view-content" style="display: none; padding: 20px 0;">
+                <!-- KPI Metrics Grid -->
+                <section class="row g-4 mb-5" id="kpi-section">
+                    <div class="col-sm-6 col-md-4 col-xl">
+                        <div class="kpi-card glass-card">
+                            <div class="kpi-icon bg-info-subtle text-info">
+                                <i class="fa-solid fa-server"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value" id="kpi-total">0</h3>
+                                <p class="kpi-label">Sorgenti Totali</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-xl">
+                        <div class="kpi-card glass-card">
+                            <div class="kpi-icon bg-success-subtle text-success">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value" id="kpi-ok">0</h3>
+                                <p class="kpi-label">Stato Regolare</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-xl">
+                        <div class="kpi-card glass-card warning-state">
+                            <div class="kpi-icon bg-warning-subtle text-warning">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-warning" id="kpi-warning">0</h3>
+                                <p class="kpi-label">Warning</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-xl">
+                        <div class="kpi-card glass-card orange-state">
+                            <div class="kpi-icon bg-orange-subtle text-orange">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-orange" id="kpi-missing">0</h3>
+                                <p class="kpi-label">Email Mancanti</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-xl">
+                        <div class="kpi-card glass-card error-state">
+                            <div class="kpi-icon bg-danger-subtle text-danger">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-danger" id="kpi-failed">0</h3>
+                                <p class="kpi-label">Lavori Falliti</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Main Backup Tabs -->
+                <ul class="nav nav-tabs custom-tabs mb-4" id="backupTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="monitored-tab" data-bs-toggle="tab"
+                            data-bs-target="#monitored-pane" type="button" role="tab" aria-controls="monitored-pane"
+                            aria-selected="true">
+                            <i class="fa-solid fa-circle-nodes me-2"></i>Flussi Monitorati
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="discover-tab" data-bs-toggle="tab" data-bs-target="#discover-pane"
+                            type="button" role="tab" aria-controls="discover-pane" aria-selected="false">
+                            <i class="fa-solid fa-wand-magic-sparkles me-2"></i>Auto-Discovery
+                            <span class="badge bg-danger ms-2 rounded-pill d-none" id="discovery-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="trash-tab" data-bs-toggle="tab" data-bs-target="#trash-pane"
+                            type="button" role="tab" aria-controls="trash-pane" aria-selected="false">
+                            <i class="fa-solid fa-trash me-2"></i>Cestino
+                            <span class="badge bg-secondary ms-2 rounded-pill d-none" id="trash-badge">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="backupTabContent">
+                    <!-- Monitored Sources Pane -->
+                    <div class="tab-pane fade show active" id="monitored-pane" role="tabpanel"
+                        aria-labelledby="monitored-tab">
+                        <div class="glass-card p-4">
+
+                            <!-- Filters & Search Toolbar -->
+                            <div class="row g-3 justify-content-between align-items-center mb-4">
+                                <div class="col-md-5 col-lg-4">
+                                    <div class="search-wrapper">
+                                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                        <input type="text" id="source-search-input" class="form-control ps-5"
+                                            placeholder="Cerca per nome, mittente o fingerprint...">
+                                    </div>
+                                </div>
+                                <div class="col-md-7 col-lg-8">
+                                    <div class="d-flex flex-wrap gap-2 justify-content-md-end filter-badges">
+                                        <button class="btn btn-sm btn-filter active" data-filter="all">Tutti</button>
+                                        <button class="btn btn-sm btn-filter text-success"
+                                            data-filter="success">Regolari</button>
+                                        <button class="btn btn-sm btn-filter text-warning"
+                                            data-filter="warning">Warning</button>
+                                        <button class="btn btn-sm btn-filter text-orange"
+                                            data-filter="missing">Mancanti</button>
+                                        <button class="btn btn-sm btn-filter text-danger"
+                                            data-filter="failed">Falliti</button>
+                                        <button class="btn btn-sm btn-filter text-info" data-filter="no_data">Senza
+                                            Dati</button>
+                                        <button class="btn btn-sm btn-filter text-muted"
+                                            data-filter="inactive">Disattivati</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Monitoring Table -->
+                            <div class="table-responsive">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Stato</th>
+                                            <th>Sorgente</th>
+                                            <th>Frequenza</th>
+                                            <th>Media Arrivo (60d)</th>
+                                            <th>Limite Massimo (3σ)</th>
+                                            <th>Ultima Email Ricevuta</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sources-table-body">
+                                        <tr>
+                                            <td colspan="7" class="text-center py-5">
+                                                <div class="spinner-border text-warning" role="status"></div>
+                                                <p class="mt-2 text-muted">Caricamento flussi di backup in corso...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Discovery Pane -->
+                    <div class="tab-pane fade" id="discover-pane" role="tabpanel" aria-labelledby="discover-tab">
+                        <div class="glass-card p-4">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                                <div>
+                                    <h4 class="mb-2"><i class="fa-solid fa-wand-magic-sparkles text-warning me-2"></i>Rilevamento Automatico dei Backup</h4>
+                                    <p class="text-muted fs-6 mb-0">Abbiamo analizzato la cache delle email alla ricerca di flussi ricorrenti correlati a backup (Veeam, SQL Server, Proxmox, ecc.) non ancora monitorati.</p>
+                                </div>
+                                <div style="min-width: 280px; max-width: 400px;" class="flex-grow-1">
+                                    <div class="search-wrapper">
+                                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                        <input type="text" id="discover-search-input" class="form-control ps-5" placeholder="Cerca suggerimenti per nome, mittente...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Discover Table -->
+                            <div class="table-responsive">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr id="discover-table-header-row">
+                                            <th class="sortable-th" data-sort="name">Sorgente Suggerita <i class="fa-solid fa-sort ms-1 text-muted opacity-50" style="font-size: 0.8rem;"></i></th>
+                                            <th class="sortable-th" data-sort="frequency">Frequenza Stimata <i class="fa-solid fa-sort ms-1 text-muted opacity-50" style="font-size: 0.8rem;"></i></th>
+                                            <th class="sortable-th" data-sort="samples">Campioni Rilevati <i class="fa-solid fa-sort ms-1 text-muted opacity-50" style="font-size: 0.8rem;"></i></th>
+                                            <th class="sortable-th" data-sort="action">Azione <i class="fa-solid fa-sort ms-1 text-muted opacity-50" style="font-size: 0.8rem;"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="discover-table-body">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5">
+                                                <div class="spinner-border text-warning" role="status"></div>
+                                                <p class="mt-2 text-muted">Scansione e analisi della cache email in corso...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trash Pane -->
+                    <div class="tab-pane fade" id="trash-pane" role="tabpanel" aria-labelledby="trash-tab">
+                        <div class="glass-card p-4">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                                <div>
+                                    <h4 class="mb-2"><i class="fa-solid fa-trash text-secondary me-2"></i>Cestino Mail Escluse</h4>
+                                    <p class="text-muted fs-6 mb-0">Gestisci le email escluse dal monitoraggio e dall'auto-discovery. Le email qui elencate possono essere ripristinate per tornare visibili.</p>
+                                </div>
+                            </div>
+
+                            <!-- Trash Table -->
+                            <div class="table-responsive">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Oggetto Email</th>
+                                            <th>Mittente</th>
+                                            <th>Data Ricezione</th>
+                                            <th>Azione</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="trash-table-body">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5">
+                                                <p class="text-muted m-0">Nessuna e-mail nel cestino.</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer control for adding new backups -->
+                <div class="d-flex justify-content-end mt-4">
+                    <button class="btn btn-warning" id="add-source-btn" data-bs-toggle="modal"
+                        data-bs-target="#sourceModal">
+                        <i class="fa-solid fa-plus me-2"></i> Nuova Sorgente
+                    </button>
+                </div>
+            </div>
+
+            <!-- Activity Log View -->
+            <div id="activity-view" class="view-content" style="display: none;">
+                <div
+                    class="activity-header d-flex align-items-center justify-content-between mb-4 p-3 rounded shadow-sm bg-body-tertiary">
+                    <div class="d-flex align-items-center gap-3 flex-grow-1 flex-wrap">
+                        <div class="search-wrapper flex-grow-1" style="max-width: 400px; position: relative;">
+                            <i class="fa-solid fa-magnifying-glass search-icon"
+                                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                            <input type="text" id="activity-search-input" placeholder="Cerca attività..."
+                                class="form-control" style="padding-left: 35px;">
+                        </div>
+                        <div class="filter-wrapper">
+                            <select id="activity-type-filter" class="form-select">
+                                <option value="">Tutte le attività</option>
+                                <option value="login">Accessi (Login)</option>
+                                <option value="logout">Uscite (Logout)</option>
+                                <option value="email_read">Email Lette</option>
+                                <option value="email_moved">Email Spostate</option>
+                                <option value="ticket_created">Ticket Creati</option>
+                                <option value="archive">Archiviazioni</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="clear-activities-btn" class="btn btn-outline-warning">
+                            <i class="fa-solid fa-box-archive"></i> Archivia Tutto
+                        </button>
+                    </div>
+                </div>
+
+                <div class="activity-timeline-container">
+                    <div id="activity-list-container" class="activity-timeline">
+                        <!-- Attività renderizzate dinamicamente qui -->
+                    </div>
+                </div>
+
+                <!-- Paginazione -->
+                <div class="activity-pagination d-flex align-items-center justify-content-center gap-3 mt-4">
+                    <button id="activity-prev-page" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-chevron-left"></i> Precedente
+                    </button>
+                    <span id="activity-page-info" class="text-muted fw-semibold">Pagina 1 di 1</span>
+                    <button id="activity-next-page" class="btn btn-sm btn-outline-secondary">
+                        Successivo <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats / Analisi Nerd View -->
+            <div id="stats-view" class="view-content" style="display: none;">
+                <div class="stats-header d-flex align-items-center justify-content-between mb-4 p-3 rounded shadow-sm bg-body-tertiary">
+                    <h4 class="m-0 fw-semibold text-warning d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-chart-pie"></i> Analisi Nerd delle Email
+                    </h4>
+                    <div class="d-flex align-items-center gap-2">
+                        <select id="stats-period-select" class="form-select form-select-sm w-auto">
+                            <option value="day">Oggi</option>
+                            <option value="week" selected>Ultimi 7 Giorni</option>
+                            <option value="month">Ultimi 30 Giorni</option>
+                            <option value="year">Ultimi 12 Mesi</option>
+                            <option value="all">Tutto il Periodo</option>
+                        </select>
+                        <button id="refresh-stats-btn" class="btn btn-warning btn-sm">
+                            <i class="fa-solid fa-rotate me-1"></i> Aggiorna
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Overview Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 text-center">
+                            <span class="text-muted small fw-semibold">Totale Email</span>
+                            <h2 id="stats-kpi-total" class="m-0 mt-1 fw-bold text-primary">-</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 text-center">
+                            <span class="text-muted small fw-semibold">Umane</span>
+                            <h2 id="kpi-human" class="m-0 mt-1 fw-bold text-success">-</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 text-center">
+                            <span class="text-muted small fw-semibold">Bot / Automatiche</span>
+                            <h2 id="kpi-bot" class="m-0 mt-1 fw-bold text-danger">-</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 text-center">
+                            <span class="text-muted small fw-semibold">Cloud Monitor</span>
+                            <h2 id="kpi-cloud" class="m-0 mt-1 fw-bold text-warning">-</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-8">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 id="stats-volume-title" class="fw-semibold m-0 text-muted"><i class="fa-solid fa-chart-line me-2"></i>Volume Storico (Ultimi 7 Giorni)</h6>
+                                <button class="btn btn-sm btn-link text-muted p-0 btn-fullscreen-chart" data-chart="volume" title="Schermo Intero">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 260px; min-height: 260px;">
+                                <canvas id="stats-volume-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-semibold m-0 text-muted"><i class="fa-solid fa-chart-pie me-2"></i>Composizione Inbox</h6>
+                                <button class="btn btn-sm btn-link text-muted p-0 btn-fullscreen-chart" data-chart="category" title="Schermo Intero">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="chart-container d-flex align-items-center justify-content-center" style="position: relative; height: 260px; min-height: 260px;">
+                                <canvas id="stats-category-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-semibold m-0 text-muted"><i class="fa-solid fa-users me-2"></i>Top 10 Mittenti</h6>
+                                <button class="btn btn-sm btn-link text-muted p-0 btn-fullscreen-chart" data-chart="senders" title="Schermo Intero">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 260px; min-height: 260px;">
+                                <canvas id="stats-senders-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card p-3 shadow-sm bg-body-tertiary border-0 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-semibold m-0 text-muted"><i class="fa-solid fa-clock me-2"></i>Distribuzione Oraria (Fasce CEST)</h6>
+                                <button class="btn btn-sm btn-link text-muted p-0 btn-fullscreen-chart" data-chart="hourly" title="Schermo Intero">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 260px; min-height: 260px;">
+                                <canvas id="stats-hourly-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subject Patterns Table -->
+                <div class="card p-3 shadow-sm bg-body-tertiary border-0 mb-4">
+                    <h6 class="fw-semibold mb-3 text-muted"><i class="fa-solid fa-list-ol me-2"></i>Pattern di Oggetto più Frequenti (Allarmi Collassati)</h6>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover align-middle m-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">Conteggio</th>
+                                    <th>Pattern dell'Oggetto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-patterns-table-body">
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">Caricamento statistiche...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
             <!-- Pinned View -->
             <div id="pinned-view" class="view-content">
                 <div id="pinned-emails-container"></div>
+            </div>
+
+            <!-- Redmine Support Dashboard View -->
+            <div id="redmine-view" class="view-content" style="display: none; padding: 20px 0;">
+                <!-- Toolbar for dashboard -->
+                <div class="redmine-toolbar glass-card p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-warning fs-4 animate-glow-spin"></i>
+                        <h4 class="m-0 fw-semibold text-primary">Dashboard Supporto Redmine</h4>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="project-filter-wrapper d-flex align-items-center gap-2">
+                            <label for="redmine-project-select" class="m-0 small text-secondary">Progetto:</label>
+                            <select id="redmine-project-select" class="form-select form-select-sm">
+                                <option value="all" selected>Entrambi i progetti</option>
+                                <option value="7291">Supporto LVL 1</option>
+                                <option value="7312">Supporto LVL 2</option>
+                            </select>
+                        </div>
+                        <div class="period-filter-wrapper d-flex align-items-center gap-2">
+                            <label for="redmine-period-select" class="m-0 small text-secondary">Periodo:</label>
+                            <select id="redmine-period-select" class="form-select form-select-sm">
+                                <option value="oggi">Oggi</option>
+                                <option value="3d">Ultimi 3 giorni</option>
+                                <option value="1w">Ultima settimana</option>
+                                <option value="15d">Ultimi 15 giorni</option>
+                                <option value="1m">Ultimo mese</option>
+                                <option value="3m">Ultimi 3 mesi</option>
+                                <option value="6m" selected>Ultimi 6 mesi</option>
+                                <option value="1y">Ultimo anno</option>
+                                <option value="custom">Personalizzato...</option>
+                            </select>
+                        </div>
+                        <div id="redmine-custom-date-container" class="d-none align-items-center gap-2">
+                            <label for="redmine-date-start" class="m-0 small text-secondary">Da:</label>
+                            <input type="date" id="redmine-date-start" class="form-control form-control-sm" style="width: 130px;">
+                            <label for="redmine-date-end" class="m-0 small text-secondary">A:</label>
+                            <input type="date" id="redmine-date-end" class="form-control form-control-sm" style="width: 130px;">
+                        </div>
+                        <button id="redmine-help-btn" class="btn btn-sm btn-outline-info">
+                            <i class="fa-solid fa-circle-question me-1"></i> Legenda
+                        </button>
+                        <button id="redmine-refresh-btn" class="btn btn-sm btn-warning">
+                            <i class="fa-solid fa-arrows-rotate me-1"></i> Aggiorna
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Metric Grid -->
+                <section class="row g-4 mb-4" id="redmine-kpi-section">
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="kpi-card glass-card">
+                            <div class="kpi-icon bg-info-subtle text-info">
+                                <i class="fa-solid fa-ticket"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-info" id="redmine-kpi-total">0</h3>
+                                <p class="kpi-label">Ticket Totali</p>
+                                <span class="kpi-subtext text-muted" id="redmine-kpi-total-subtext">compresi i chiusi</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="kpi-card glass-card" id="redmine-card-open">
+                            <div class="kpi-icon bg-success-subtle text-success">
+                                <i class="fa-solid fa-folder-open"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-success" id="redmine-kpi-open">0</h3>
+                                <p class="kpi-label">Ticket in gestione</p>
+                                <span class="kpi-subtext text-muted" id="redmine-kpi-open-subtext">carico attuale</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="kpi-card glass-card error-state">
+                            <div class="kpi-icon bg-danger-subtle text-danger">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-danger" id="redmine-kpi-urgent">0</h3>
+                                <p class="kpi-label">Urgenti (Alta)</p>
+                                <span class="kpi-subtext text-muted">da evadere subito</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="kpi-card glass-card warning-state" id="redmine-card-overdue">
+                            <div class="kpi-icon bg-warning-subtle text-warning">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h3 class="kpi-value text-warning" id="redmine-kpi-overdue">0</h3>
+                                <p class="kpi-label">Arretrati (+2gg)</p>
+                                <span class="kpi-subtext text-muted" id="redmine-kpi-overdue-subtext">in attesa da giorni</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Unassigned Tickets and User Workload Section -->
+                <div class="row g-4 mb-4">
+                    <!-- Ticket aperti non assegnati -->
+                    <div class="col-lg-6">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-folder-open text-warning me-2"></i> Ticket Non Assegnati in Coda
+                                <span id="redmine-unassigned-badge-count" class="badge bg-warning rounded-pill ms-2 d-none">0</span>
+                            </h4>
+                            <p class="text-secondary small mb-3">Ticket aperti assegnati ai gruppi L1 o L2 e non ancora in carico ad un utente specifico.</p>
+                            <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Progetto</th>
+                                            <th>Titolo</th>
+                                            <th>Priorità</th>
+                                            <th>Età</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redmine-unassigned-table-body">
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">Caricamento in corso...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Carico Lavoro Utenti -->
+                    <div class="col-lg-6">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-users text-warning me-2"></i> Carico Utenti
+                            </h4>
+                            <p class="text-secondary small mb-3">Utenti con ticket aperti in carico, ordinati per priorità di smaltimento.</p>
+                            <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome Utente</th>
+                                            <th class="text-center">Ticket in Carico</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redmine-user-workload-table-body">
+                                        <tr>
+                                            <td colspan="2" class="text-center py-4 text-muted">Caricamento in corso...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Urgent and Backlog tickets list (Di quei 7...) -->
+                    <div class="col-lg-6">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-list-check text-warning me-2"></i> Ticket Critici da Risolvere
+                                <span id="critical-badge-count" class="badge bg-danger rounded-pill ms-2 d-none">0</span>
+                            </h4>
+                            <p class="text-secondary small mb-3">Include tutti i ticket attualmente aperti con priorità impostata su "Alta" (Urgenti) o creati più di 2 giorni fa (Arretrati).</p>
+                            <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Progetto</th>
+                                            <th>Titolo</th>
+                                            <th>Priorità</th>
+                                            <th>Età</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redmine-critical-table-body">
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">Nessun ticket critico rilevato. Ottimo lavoro!</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic daily chart card -->
+                    <div class="col-lg-6">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                                <h4 class="m-0 text-primary fw-semibold d-flex align-items-center">
+                                    <i class="fa-solid fa-chart-line text-warning me-2"></i> Andamento Giornaliero
+                                </h4>
+                            </div>
+                            <p class="text-secondary small mb-3">Grafico storico dei ticket aperti (creati) e chiusi giorno per giorno in base alle date Redmine.</p>
+                            <div class="chart-container flex-grow-1" style="position: relative; height: 300px; min-height: 300px;">
+                                <canvas id="redmine-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Focus Efficienza -->
+                <div class="row g-4 mb-4">
+                    <div class="col-12">
+                        <h4 class="mb-2 text-primary fw-semibold d-flex align-items-center">
+                            <i class="fa-solid fa-gauge-high text-warning me-2"></i> Focus Efficienza e Performance
+                        </h4>
+                        <p class="text-secondary small mb-1">Metriche aggregate per monitorare la reattività e l'efficacia delle risoluzioni del team.</p>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="kpi-card glass-card mini-metric-card">
+                            <div class="mini-kpi-icon bg-info-subtle text-info">
+                                <i class="fa-solid fa-hourglass-half"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h4 class="kpi-value mini-value text-info" id="redmine-kpi-mttr">0.0 gg</h4>
+                                <p class="kpi-label mini-label">MTTR Medio</p>
+                                <span class="kpi-subtext text-muted">Tempo di risoluzione</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="kpi-card glass-card mini-metric-card">
+                            <div class="mini-kpi-icon bg-success-subtle text-success">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h4 class="kpi-value mini-value text-success" id="redmine-kpi-fcr">0%</h4>
+                                <p class="kpi-label mini-label">FCR Rate</p>
+                                <span class="kpi-subtext text-muted">Risolti primo contatto</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="kpi-card glass-card mini-metric-card">
+                            <div class="mini-kpi-icon bg-danger-subtle text-danger">
+                                <i class="fa-solid fa-rotate-left"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h4 class="kpi-value mini-value text-danger" id="redmine-kpi-reopen">0%</h4>
+                                <p class="kpi-label mini-label">Tasso Riapertura</p>
+                                <span class="kpi-subtext text-muted">Ticket riaperti</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="kpi-card glass-card mini-metric-card">
+                            <div class="mini-kpi-icon bg-warning-subtle text-warning">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div class="kpi-data">
+                                <h4 class="kpi-value mini-value text-warning" id="redmine-kpi-backlog-growth">0.0</h4>
+                                <p class="kpi-label mini-label">Backlog Growth</p>
+                                <span class="kpi-subtext text-muted">Creati / Chiusi (7gg)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Analisi Tecnica e Distribuzione -->
+                <div class="row g-4 mb-4">
+                    <!-- Distribuzione Categoria / Componente -->
+                    <div class="col-md-6 col-xl-4">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-chart-pie text-warning me-2"></i> Distribuzione Allarmi
+                            </h4>
+                            <p class="text-secondary small mb-3">Scomposizione dei ticket di monitoraggio per tipologia di servizio/componente.</p>
+                            <div class="chart-container flex-grow-1 d-flex align-items-center justify-content-center" style="position: relative; height: 280px; min-height: 280px;">
+                                <canvas id="redmine-distribution-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap fascia oraria -->
+                    <div class="col-md-6 col-xl-4">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center justify-content-between">
+                                <span><i class="fa-solid fa-clock text-warning me-2"></i> Ticket per Fascia Oraria</span>
+                                <button class="btn btn-sm btn-link text-secondary p-0" id="btn-fullscreen-heatmap" title="Schermo intero" style="border: none; background: transparent; transition: transform 0.2s;">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </h4>
+                            <p class="text-secondary small mb-3">Quando abbiamo tipicamente il maggior numero di ticket durante la giornata?</p>
+                            <div class="chart-container flex-grow-1" style="position: relative; height: 280px; min-height: 280px;">
+                                <canvas id="redmine-heatmap-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top 5 Host Critici -->
+                    <div class="col-md-12 col-xl-4">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-server text-warning me-2"></i> Top 5 Host Critici
+                            </h4>
+                            <p class="text-secondary small mb-3">Server o apparati che hanno generato il maggior numero di alert assoluti.</p>
+                            <div class="top-hosts-list flex-grow-1 d-flex flex-column justify-content-center" id="redmine-top-hosts-container">
+                                <!-- Renderizzato dinamicamente in JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Dettaglio KPI per Categoria -->
+                <div class="row g-4 mb-4">
+                    <div class="col-12">
+                        <div class="glass-card p-4">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-tags text-warning me-2"></i> Dettaglio KPI per Categoria
+                            </h4>
+                            <p class="text-secondary small mb-3">Scomposizione dei ticket in gestione, urgenti e arretrati per ciascuna categoria Redmine, con percentuale rispetto al totale generale della colonna.</p>
+                            <div class="row align-items-center">
+                                <div class="col-lg-7">
+                                    <div class="table-responsive">
+                                        <table class="table custom-table align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Categoria</th>
+                                                    <th class="text-center">In Gestione</th>
+                                                    <th class="text-center">Urgenti (Alta)</th>
+                                                    <th class="text-center">Arretrati (+2gg)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="redmine-category-kpi-table-body">
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4 text-muted">Caricamento in corso...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-lg-5">
+                                    <div class="chart-container d-flex align-items-center justify-content-center" style="position: relative; height: 260px; min-height: 260px;">
+                                        <canvas id="redmine-category-pie-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Performance Operatori e Tempi per Categoria -->
+                <div class="row g-4 mb-4">
+                    <!-- Efficienza operatore triage -->
+                    <div class="col-lg-7">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-user-check text-warning me-2"></i> Efficienza Operatori in Turno di Triage
+                            </h4>
+                            <p class="text-secondary small mb-3">Attività giornaliere degli operatori nel triage delle email e nell'apertura dei ticket.</p>
+                            <div class="table-responsive flex-grow-1" style="max-height: 350px; overflow-y: auto;">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Operatore</th>
+                                            <th class="text-center">Email Gestite</th>
+                                            <th class="text-center">Ticket Aperti</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redmine-triage-efficiency-table-body">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted">Seleziona un periodo per caricare i dati...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tempi di risoluzione per categoria -->
+                    <div class="col-lg-5">
+                        <div class="glass-card p-4 h-100 d-flex flex-column">
+                            <h4 class="mb-3 text-primary fw-semibold d-flex align-items-center">
+                                <i class="fa-solid fa-hourglass-half text-warning me-2"></i> MTTR per Categoria
+                            </h4>
+                            <p class="text-secondary small mb-3">Tempo medio di risoluzione (MTTR) dei ticket chiusi, suddiviso per categoria di servizio.</p>
+                            <div class="table-responsive flex-grow-1" style="max-height: 350px; overflow-y: auto;">
+                                <table class="table custom-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Categoria</th>
+                                            <th class="text-center">Ticket Risolti</th>
+                                            <th class="text-center">MTTR Medio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redmine-mttr-category-table-body">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">Caricamento in corso...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
 
@@ -212,7 +1186,21 @@
     <div id="chat-panel" class="chat-panel" style="display: none;">
         <div id="chat-panel-header" class="chat-panel-header">
             <h3><i class="fa-brands fa-rocketchat"></i> Chat</h3>
-            <button id="close-chat-panel" class="btn btn-sm btn-danger">&times;</button>
+            <div class="chat-header-actions d-flex align-items-center">
+                <button id="pin-chat-bubble-btn" class="btn btn-sm" title="Fissa questa chat come bolla"
+                    style="background: none; border: none; color: white; padding: 0 8px; font-size: 1rem;">
+                    <i class="fa-solid fa-thumbtack"></i>
+                </button>
+                <button id="toggle-chat-transparency-btn" class="btn btn-sm" title="Fissa semi-trasparente"
+                    style="background: none; border: none; color: white; padding: 0 8px; font-size: 1rem;">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+                <button id="minimize-to-bubble-btn" class="btn btn-sm" title="Riduci a bolla"
+                    style="background: none; border: none; color: white; padding: 0 8px; font-size: 1rem; margin-right: 8px;">
+                    <i class="fa-solid fa-compress"></i>
+                </button>
+                <button id="close-chat-panel" class="btn btn-sm btn-danger">&times;</button>
+            </div>
         </div>
         <div class="chat-container">
             <div class="chat-sidebar" id="chat-sidebar">
@@ -223,6 +1211,7 @@
                     <!-- Conversazioni caricate qui -->
                 </div>
             </div>
+            <div class="chat-sidebar-resizer" id="chat-sidebar-resizer"></div>
             <div class="chat-main">
                 <div id="chat-messages-header" class="chat-messages-header">
                     <span id="active-chat-name">Seleziona una chat</span>
@@ -241,14 +1230,6 @@
     <!-- Notifications Container -->
     <div id="chat-notifications-container" class="chat-notifications-container"></div>
 
-    <div id="walkthrough-overlay" class="walkthrough-overlay" style="display: none;"></div>
-    <div id="walkthrough-box" class="walkthrough-box" style="display: none;">
-        <p id="walkthrough-text"></p>
-        <div class="walkthrough-navigation">
-            <button id="walkthrough-next" class="walkthrough-button">Next</button>
-            <button id="walkthrough-end" class="walkthrough-button">End</button>
-        </div>
-    </div>
     <div id="log-panel" class="log-panel">
         <div class="log-panel-header">
             <h3>Logs</h3>
@@ -265,7 +1246,9 @@
         </div>
         <pre id="log-content" class="log-content"></pre>
     </div>
-    <button id="open-log-panel" class="btn btn-info">Open Logs</button>
+    <button id="open-log-panel" class="btn-minimal-logs" title="Visualizza Logs del Sistema">
+        <i class="fa-solid fa-terminal"></i> <span>Logs</span>
+    </button>
 
     <!-- Reply Modal -->
     <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
@@ -273,23 +1256,172 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="replyModalLabel">Respond to Email</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="ms-auto d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-link p-0 text-secondary" id="reply-floating-btn" title="Finestra spostabile" style="font-size: 1rem; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
+                            <i class="fa-solid fa-window-restore"></i>
+                        </button>
+                        <button type="button" class="btn btn-link p-0 text-secondary" id="reply-fullscreen-btn" title="Schermo intero" style="font-size: 1rem; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="reply-to" class="form-label">To:</label>
-                        <input type="text" class="form-control" id="reply-to" readonly>
+                    <div class="mb-3 position-relative">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="reply-to" class="form-label mb-0">To:</label>
+                            <div>
+                                <button type="button" class="btn btn-link btn-sm p-0 me-2 text-decoration-none"
+                                    id="toggle-cc-btn" style="font-size: 0.85rem;">+ Cc</button>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                                    id="toggle-bcc-btn" style="font-size: 0.85rem;">+ Ccn</button>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control" id="reply-to" autocomplete="off">
+                        <div id="reply-to-autocomplete-list" class="autocomplete-suggestions-list" style="display: none;"></div>
+                    </div>
+                    <div class="mb-3 position-relative" id="cc-field-group" style="display: none;">
+                        <label for="reply-cc" class="form-label">Cc:</label>
+                        <input type="text" class="form-control" id="reply-cc" placeholder="cc@example.com" autocomplete="off">
+                        <div id="reply-cc-autocomplete-list" class="autocomplete-suggestions-list" style="display: none;"></div>
+                    </div>
+                    <div class="mb-3 position-relative" id="bcc-field-group" style="display: none;">
+                        <label for="reply-bcc" class="form-label">Ccn (Bcc):</label>
+                        <input type="text" class="form-control" id="reply-bcc" placeholder="bcc@example.com" autocomplete="off">
+                        <div id="reply-bcc-autocomplete-list" class="autocomplete-suggestions-list" style="display: none;"></div>
                     </div>
                     <div class="mb-3">
                         <label for="reply-subject" class="form-label">Subject:</label>
                         <input type="text" class="form-control" id="reply-subject" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="reply-body" class="form-label">Message:</label>
-                        <textarea class="form-control" id="reply-body" rows="10"></textarea>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0 fw-semibold">Messaggio:</label>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                                id="toggle-formatting-btn" style="font-size: 0.85rem;"
+                                title="Mostra/Nascondi Opzioni di formattazione">
+                                <i class="fa-solid fa-font"></i> Opzioni formattazione
+                            </button>
+                        </div>
+
+                        <!-- Rich Text Editor Container -->
+                        <div class="rich-text-editor-container">
+                            <div class="rich-text-toolbar" id="rich-text-toolbar">
+                                <select class="editor-select" id="editor-font" title="Carattere">
+                                    <option value="Poppins" selected>Poppins</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Courier New">Monospace</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Verdana">Verdana</option>
+                                </select>
+
+                                <select class="editor-select" id="editor-size" title="Dimensione testo">
+                                    <option value="2">Piccola</option>
+                                    <option value="3" selected>Normale</option>
+                                    <option value="5">Grande</option>
+                                    <option value="7">Enorme</option>
+                                </select>
+
+                                <div class="toolbar-divider"></div>
+
+                                <button type="button" class="toolbar-btn" data-command="bold"
+                                    title="Grassetto (Ctrl+B)">
+                                    <i class="fa-solid fa-bold"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="italic"
+                                    title="Corsivo (Ctrl+I)">
+                                    <i class="fa-solid fa-italic"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="underline"
+                                    title="Sottolineato (Ctrl+U)">
+                                    <i class="fa-solid fa-underline"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="strikeThrough" title="Barrato">
+                                    <i class="fa-solid fa-strikethrough"></i>
+                                </button>
+
+                                <div class="toolbar-divider"></div>
+
+                                <div class="toolbar-color-picker-wrapper" title="Colore testo">
+                                    <button type="button" class="toolbar-btn color-picker-btn" id="text-color-btn">
+                                        <i class="fa-solid fa-font"></i>
+                                        <span class="color-underline" style="background-color: #222;"
+                                            id="text-color-indicator"></span>
+                                    </button>
+                                    <div class="color-palette" id="text-color-palette"></div>
+                                </div>
+
+                                <div class="toolbar-color-picker-wrapper" title="Colore sfondo testo">
+                                    <button type="button" class="toolbar-btn color-picker-btn" id="bg-color-btn">
+                                        <i class="fa-solid fa-highlighter"></i>
+                                        <span class="color-underline" style="background-color: transparent;"
+                                            id="bg-color-indicator"></span>
+                                    </button>
+                                    <div class="color-palette" id="bg-color-palette"></div>
+                                </div>
+
+                                <div class="toolbar-divider"></div>
+
+                                <button type="button" class="toolbar-btn" data-command="justifyLeft"
+                                    title="Allinea a sinistra">
+                                    <i class="fa-solid fa-align-left"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="justifyCenter"
+                                    title="Allinea al centro">
+                                    <i class="fa-solid fa-align-center"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="justifyRight"
+                                    title="Allinea a destra">
+                                    <i class="fa-solid fa-align-right"></i>
+                                </button>
+
+                                <div class="toolbar-divider"></div>
+
+                                <button type="button" class="toolbar-btn" data-command="insertUnorderedList"
+                                    title="Elenco puntato">
+                                    <i class="fa-solid fa-list-ul"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="insertOrderedList"
+                                    title="Elenco numerato">
+                                    <i class="fa-solid fa-list-ol"></i>
+                                </button>
+
+                                <div class="toolbar-divider"></div>
+
+                                <button type="button" class="toolbar-btn" id="editor-link-btn" title="Inserisci link">
+                                    <i class="fa-solid fa-link"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" data-command="removeFormat"
+                                    title="Rimuovi formattazione">
+                                    <i class="fa-solid fa-text-slash"></i>
+                                </button>
+                            </div>
+
+                            <!-- Editor Content Area -->
+                            <div class="rich-text-editor-content" id="reply-body-rich" contenteditable="true"></div>
+                        </div>
+
+                        <!-- Keep the original textarea hidden to maintain code backward compatibility and easy fallback -->
+                        <textarea class="form-control" id="reply-body" style="display: none;"></textarea>
+                    </div>
+
+                    <!-- Attachments Area -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="reply-add-attachment-btn">
+                                <i class="fa-solid fa-paperclip"></i> Allega file
+                            </button>
+                            <span class="text-muted small" id="reply-attachment-info">Nessun file selezionato</span>
+                        </div>
+                        <input type="file" id="reply-file-input" class="d-none" multiple>
+                        <div id="reply-attached-files" class="mt-2 d-flex flex-wrap gap-2"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary me-auto" id="firmati-btn">
+                        <i class="fa-solid fa-signature"></i> Firmati
+                    </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="send-reply-btn">Send</button>
                 </div>
@@ -315,6 +1447,36 @@
                     </div>
                 </div>
                 <div class="mb-4">
+                    <h5>Gemini API</h5>
+                    <label for="gemini-api-key" class="form-label small">Inserisci la tua chiave API Gemini</label>
+                    <input type="password" id="gemini-api-key" placeholder="Gemini API Key" class="form-control mb-1">
+                    <div class="form-text small">
+                        Accedi con account aziendale a su <a
+                            href="https://aistudio.google.com/app/api-keys?project=sturdy-coast-344221" target="_blank"
+                            rel="noopener noreferrer">Google AI Studio</a> per crearne una.
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h5><i class="fa-solid fa-brain me-1"></i> Valutazione Automatica Importanza</h5>
+                    <label for="gemini-auto-rate" class="form-label small">Frequenza chiamata automatica a
+                        Gemini</label>
+                    <select id="gemini-auto-rate" class="form-select">
+                        <option value="0">Disabilitata</option>
+                        <option value="300000">Ogni 5 minuti</option>
+                        <option value="900000">Ogni 15 minuti</option>
+                        <option value="1800000">Ogni 30 minuti</option>
+                        <option value="3600000">Ogni ora</option>
+                        <option value="5400000">Ogni 1h 30m</option>
+                        <option value="7200000">Ogni 2 ore</option>
+                        <option value="10800000">Ogni 3 ore</option>
+                        <option value="14400000">Ogni 4 ore</option>
+                        <option value="18000000">Ogni 5 ore</option>
+                        <option value="28800000">Ogni 8 ore</option>
+                    </select>
+                    <p class="text-muted small mt-2">La valutazione automatica avviene in background senza notifiche.
+                    </p>
+                </div>
+                <div class="mb-4">
                     <h5>Visualizzazione Email</h5>
                     <label for="view-mode-select" class="form-label small">Scegli come aprire i messaggi</label>
                     <select id="view-mode-select" class="form-select">
@@ -325,11 +1487,52 @@
                     </p>
                 </div>
                 <div class="mb-4">
+                    <h5>Modalità Applicazione</h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span id="app-mode-text">Modalità corrente: <strong>Produzione</strong></span>
+                        <button id="toggle-app-mode-btn" class="btn btn-sm btn-outline-warning">Passa a Debug</button>
+                    </div>
+                    <p class="text-muted small mt-2">In modalità Debug, le email non vengono inviate agli utenti ma scritte in un file di log.</p>
+                </div>
+                <div class="mb-4">
                     <h5>Sicurezza</h5>
                     <div id="mfa-status-container" class="d-flex align-items-center justify-content-between">
                         <span id="mfa-status-text">Multi-Factor Authentication (MFA)</span>
                         <button id="setup-mfa-btn" class="btn btn-sm btn-outline-primary">Configura</button>
                     </div>
+                </div>
+                <div class="mb-4">
+                    <h5>Knowledge Base</h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span style="font-size: 0.85rem;">Sincronizza ticket Redmine chiusi in SQLite:</span>
+                        <button id="sync-kb-btn" class="btn btn-sm btn-outline-info">
+                            <i class="fa-solid fa-rotate"></i> Sincronizza
+                        </button>
+                    </div>
+                    <div id="sync-kb-status" class="text-muted small mt-2" style="display: none; font-size: 0.75rem;"></div>
+                </div>
+                <div class="mb-4">
+                    <h5>Regole Score Personalizzate</h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span style="font-size: 0.85rem;">Configura regole per gli score delle email:</span>
+                        <button id="manage-score-rules-btn" class="btn btn-sm btn-outline-primary">
+                            <i class="fa-solid fa-list-check"></i> Gestisci Regole
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h5><i class="fa-solid fa-power-off me-1"></i> Riavvio Server</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <select id="restart-countdown-select" class="form-select form-select-sm" style="width: auto; height: 31px; font-size: 0.85rem;">
+                            <option value="10">10 secondi</option>
+                            <option value="30" selected>30 secondi</option>
+                            <option value="60">1 minuto</option>
+                        </select>
+                        <button id="restart-server-btn" class="btn btn-sm btn-danger" style="height: 31px; font-size: 0.85rem; padding: 0 10px;">
+                            <i class="fa-solid fa-power-off me-1"></i> Riavvia Server
+                        </button>
+                    </div>
+                    <p class="text-muted small mt-2">Avvisa tutti gli utenti connessi con un countdown grafico prima di riavviare.</p>
                 </div>
                 <hr>
                 <div class="mt-4">
@@ -348,6 +1551,140 @@
         </div>
     </div>
 
+    <!-- Dedicated Email Notes Modal -->
+    <div id="email-notes-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-window account-modal-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-comments"></i> Note ed Annotazioni</h3>
+                <button id="close-email-notes-modal" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="email-notes-modal-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regole Score Email Modal -->
+    <div id="score-rules-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-window redmine-modal-window" style="max-width: 850px; width: 90%;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-list-check"></i> Regole Score Email</h3>
+                <button id="close-score-rules-modal" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <p class="text-muted small mb-0 text-start">Assegna uno score personalizzato alle email che corrispondono ai criteri. Queste email salteranno la valutazione con Gemini.</p>
+                    <button id="add-score-rule-btn" class="btn btn-sm btn-success"><i class="fa-solid fa-plus"></i> Nuova Regola</button>
+                </div>
+                
+                <!-- Table of existing rules -->
+                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-striped table-hover align-middle small text-start">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Stato</th>
+                                <th>Nome Regola</th>
+                                <th>Campo</th>
+                                <th>Operatore</th>
+                                <th>Valore</th>
+                                <th>Score</th>
+                                <th style="width: 180px; text-align: center;">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-rules-table-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Form to Add/Edit a Rule -->
+                <div id="score-rule-form-container" class="card mt-3 p-3 d-none text-start" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);">
+                    <h5 id="score-rule-form-title" class="mb-3">Nuova Regola</h5>
+                    <input type="hidden" id="score-rule-id">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label for="score-rule-name" class="form-label small">Nome Regola</label>
+                            <input type="text" id="score-rule-name" class="form-control form-control-sm" placeholder="Es. Alert Critico Ovh">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="score-rule-field" class="form-label small">Campo da verificare</label>
+                            <select id="score-rule-field" class="form-select form-select-sm">
+                                <option value="any">Qualsiasi</option>
+                                <option value="subject">Oggetto</option>
+                                <option value="from">Mittente (From)</option>
+                                <option value="body">Corpo (Testo)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="score-rule-operator" class="form-label small">Operatore</label>
+                            <select id="score-rule-operator" class="form-select form-select-sm">
+                                <option value="contains">Contiene</option>
+                                <option value="equals">Uguale a</option>
+                                <option value="regex">Regex</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3 align-items-end">
+                        <div class="col-md-6">
+                            <label for="score-rule-value" class="form-label small">Valore del match (case-insensitive)</label>
+                            <input type="text" id="score-rule-value" class="form-control form-control-sm" placeholder="Testo da cercare o espressione regolare">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="score-rule-score" class="form-label small">Score Assegnato (0.0 - 1.0)</label>
+                            <input type="number" id="score-rule-score" class="form-control form-control-sm" min="0.0" max="1.0" step="0.05" value="0.9">
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button id="save-score-rule-btn" class="btn btn-sm btn-primary w-100">Salva</button>
+                            <button id="cancel-score-rule-btn" class="btn btn-sm btn-secondary w-100">Annulla</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link Ticket Modal -->
+    <div id="link-ticket-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-window redmine-modal-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-link"></i> Collega Email a Ticket</h3>
+                <button id="close-link-ticket-modal" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email da collegare:</label>
+                    <div id="link-ticket-email-subject" class="text-secondary small border p-2 rounded bg-dark-subtle">--</div>
+                </div>
+                <div class="mb-3 position-relative">
+                    <label for="link-ticket-search" class="form-label fw-bold">Seleziona Ticket Redmine (L1 / L2)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="link-ticket-search" class="form-control" placeholder="Cerca per Oggetto o ID ticket..." autocomplete="off">
+                    </div>
+                    <div id="link-ticket-autocomplete-list" class="autocomplete-suggestions-list" style="display: none;">
+                        <!-- Suggerimenti caricati dinamicamente -->
+                    </div>
+                </div>
+                <div id="selected-ticket-preview" class="p-3 border rounded bg-dark-subtle d-none mb-3">
+                    <strong>Ticket Selezionato:</strong>
+                    <div id="selected-ticket-details" class="small mt-1 text-secondary"></div>
+                </div>
+                <div class="mb-3 d-flex align-items-center" style="padding-top: 10px;">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="link-ticket-mark-as-read" checked>
+                        <label class="form-check-label fw-semibold" for="link-ticket-mark-as-read" style="margin-left: 8px;">
+                            Segna email come letta
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-4 d-flex justify-content-end gap-2">
+                    <button id="cancel-link-ticket" class="btn btn-secondary">Annulla</button>
+                    <button id="confirm-link-ticket" class="btn btn-primary" disabled>Collega ed Aggiorna</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Redmine Ticket Modal -->
     <div id="redmine-ticket-modal" class="modal-overlay" style="display: none;">
         <div class="modal-window redmine-modal-window">
@@ -356,10 +1693,17 @@
                 <button id="close-redmine-modal" class="btn btn-sm btn-danger">&times;</button>
             </div>
             <div class="modal-body p-4">
-                <div class="mb-3">
-                    <label for="redmine-project-select" class="form-label">Progetto</label>
-                    <select id="redmine-project-select" class="form-select">
-                        <option value="">Caricamento progetti...</option>
+                <div class="mb-3 position-relative">
+                    <label for="redmine-modal-project-search" class="form-label fw-bold">Progetto</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i id="redmine-modal-project-search-icon" class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="redmine-modal-project-search" class="form-control" placeholder="Cerca progetto..." autocomplete="off">
+                    </div>
+                    <div id="redmine-modal-project-autocomplete-list" class="autocomplete-suggestions-list" style="display: none;">
+                        <!-- Suggerimenti caricati dinamicamente -->
+                    </div>
+                    <select id="redmine-modal-project-select" class="form-select" style="display: none;">
+                        <option value="">Seleziona un progetto...</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -380,6 +1724,25 @@
                         <select id="redmine-assignee-select" class="form-select" disabled>
                             <option value="">Seleziona un progetto...</option>
                         </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="redmine-category-select" class="form-label">Categoria</label>
+                        <select id="redmine-category-select" class="form-select">
+                            <option value="Assistenza sistemistica" selected>Assistenza sistemistica</option>
+                            <option value="Monitoring">Monitoring</option>
+                            <option value="Delivery o TS">Delivery o TS</option>
+                            <option value="IT Interno">IT Interno</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-center" style="padding-top: 30px;">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="redmine-send-notification" checked>
+                            <label class="form-check-label fw-semibold" for="redmine-send-notification" style="margin-left: 8px;">
+                                Invia notifica di apertura
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -404,7 +1767,13 @@
             <div class="modal-body p-4">
                 <div class="mb-3">
                     <label for="notification-to" class="form-label">Destinatari (separati da ;)</label>
-                    <textarea id="notification-to" class="form-control" rows="2" placeholder="mario@example.com; luigi@example.com"></textarea>
+                    <textarea id="notification-to" class="form-control" rows="2"
+                        placeholder="mario@example.com; luigi@example.com"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="notification-cc" class="form-label">Cc (separati da ;)</label>
+                    <textarea id="notification-cc" class="form-control" rows="2"
+                        placeholder="cc@example.com; cc2@example.com"></textarea>
                 </div>
                 <div class="mb-3">
                     <label for="notification-subject" class="form-label">Oggetto</label>
@@ -421,6 +1790,96 @@
             </div>
         </div>
     </div>
+
+    <!-- Redmine Legend Modal -->
+    <div id="redmine-legend-modal" class="modal-overlay" style="display: none; z-index: 100002;">
+        <div class="modal-window legend-modal-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-circle-question text-info"></i> Legenda Metriche e Metodi di Calcolo</h3>
+                <button id="close-legend-modal" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
+                <div class="legend-item mb-3">
+                    <h5 class="text-primary fw-semibold"><i class="fa-solid fa-hourglass-half text-warning me-2"></i>MTTA (Mean Time To Assign / Tempo Medio Assegnazione)</h5>
+                    <p class="text-secondary small mb-1">Misura il tempo che il team impiega per assegnare un ticket a un operatore reale.</p>
+                    <p class="text-info small"><strong>Calcolo:</strong> È la differenza temporale tra la creazione del ticket e la sua prima assegnazione ad una persona fisica (escludendo i gruppi segnaposto L1/L2 come "Supporto lvl1" e "Supporto lvl2"). Se nasce già assegnato, è pari a 0.</p>
+                </div>
+                <hr class="text-muted opacity-25">
+                <div class="legend-item mb-3">
+                    <h5 class="text-primary fw-semibold"><i class="fa-solid fa-check-double text-warning me-2"></i>MTTR (Mean Time To Resolution / Tempo Medio Risoluzione)</h5>
+                    <p class="text-secondary small mb-1">Tempo medio necessario per risolvere e chiudere i ticket.</p>
+                    <p class="text-info small"><strong>Calcolo:</strong> Media della differenza temporale tra la creazione e la chiusura per tutti i ticket chiusi nel periodo selezionato.</p>
+                </div>
+                <hr class="text-muted opacity-25">
+                <div class="legend-item mb-3">
+                    <h5 class="text-primary fw-semibold"><i class="fa-solid fa-bolt text-warning me-2"></i>FCR Rate (First Contact Resolution)</h5>
+                    <p class="text-secondary small mb-1">Percentuale di ticket chiusi al primo contatto.</p>
+                    <p class="text-info small"><strong>Calcolo:</strong> Ticket chiusi che non sono mai stati riaperti, hanno avuto al massimo 1 cambio di assegnatario e non più di 2 commenti/journal.</p>
+                </div>
+                <hr class="text-muted opacity-25">
+                <div class="legend-item mb-3">
+                    <h5 class="text-primary fw-semibold"><i class="fa-solid fa-rotate-left text-warning me-2"></i>Tasso di Riapertura</h5>
+                    <p class="text-secondary small mb-1">Percentuale di ticket riaperti dopo la loro prima chiusura.</p>
+                    <p class="text-info small"><strong>Calcolo:</strong> Quota di ticket chiusi che presentano nella cronologia una transizione da uno stato chiuso a uno aperto.</p>
+                </div>
+                <hr class="text-muted opacity-25">
+                <div class="legend-item mb-3">
+                    <h5 class="text-primary fw-semibold"><i class="fa-solid fa-chart-line text-warning me-2"></i>Backlog Growth</h5>
+                    <p class="text-secondary small mb-1">Rapporto tra ticket creati e chiusi negli ultimi 7 giorni.</p>
+                    <p class="text-info small"><strong>Calcolo:</strong> Ticket creati diviso per i ticket chiusi negli ultimi 7 giorni. Se > 1.0, il backlog sta crescendo.</p>
+                </div>
+            </div>
+            <div class="modal-footer p-3 border-top d-flex justify-content-end">
+                <button id="confirm-legend-modal" class="btn btn-primary">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Heatmap Modal -->
+    <div id="heatmap-fullscreen-modal" class="modal-overlay" style="display: none; z-index: 100002;">
+        <div class="modal-window" style="max-width: 1000px; width: 95%; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="d-flex align-items-center"><i class="fa-solid fa-clock text-warning me-2"></i> Analisi Dettagliata Ticket per Fascia Oraria</h3>
+                <button id="close-heatmap-modal" class="btn btn-sm text-danger" style="font-size: 1.5rem; background: transparent; border: none; line-height: 1;">&times;</button>
+            </div>
+            <div class="modal-body p-4 d-flex flex-column" style="overflow-y: auto;">
+                <p class="text-secondary small mb-3">Clicca sulle barre del grafico per esplorare i ticket aperti in quella specifica ora.</p>
+                <!-- Large Chart Canvas -->
+                <div class="mb-4" style="position: relative; height: 300px; min-height: 300px;">
+                    <canvas id="fullscreen-heatmap-chart"></canvas>
+                </div>
+                
+                <!-- Ticket details -->
+                <div class="mt-2 d-flex flex-column">
+                    <h5 id="heatmap-selected-hour-title" class="text-primary fw-semibold mb-3">
+                        Seleziona una fascia oraria nel grafico per visualizzare i dettagli dei ticket
+                    </h5>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table custom-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">ID</th>
+                                    <th style="width: 120px;">Livello</th>
+                                    <th>Oggetto</th>
+                                    <th style="width: 120px;">Priorità</th>
+                                    <th style="width: 180px;">Data Creazione</th>
+                                </tr>
+                            </thead>
+                            <tbody id="heatmap-tickets-table-body">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">Clicca su una barra del grafico sopra per visualizzare l'elenco dei ticket.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer p-3 border-top d-flex justify-content-end gap-2">
+                <button id="confirm-heatmap-modal" class="btn btn-primary" style="border-radius: 6px; padding: 0.5rem 1.5rem;">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MFA Setup Modal -->
     <div id="mfa-setup-modal" class="modal-overlay" style="display: none;">
         <div class="modal-window mfa-modal-window">
@@ -445,8 +1904,291 @@
             </div>
         </div>
     </div>
+    <!-- Backup Hub Modals & Offcanvas Drawer -->
+    <!-- MODAL: ADD / EDIT SOURCE -->
+    <div class="modal fade" id="sourceModal" tabindex="-1" aria-labelledby="sourceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sourceModalLabel"><i class="fa-solid fa-server me-2"></i>Configura
+                        Sorgente Backup</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="source-form">
+                    <input type="hidden" id="form-source-id">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label for="form-source-name" class="form-label">Nome Identificativo Flow</label>
+                                <input type="text" class="form-control" id="form-source-name"
+                                    placeholder="Es: Veeam DB Prod o Saccne Backup" required>
+                                <div class="form-text">Assegna un nome chiaro ed esplicito a questo flusso di backup.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="form-source-sender" class="form-label">Mittente (Email From)</label>
+                                <input type="email" class="form-control" id="form-source-sender"
+                                    placeholder="Es: backup@azienda.it" required>
+                                <div class="form-text">L'indirizzo email mittente del sistema di backup.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="form-source-frequency" class="form-label">Frequenza Attesa</label>
+                                <select class="form-select" id="form-source-frequency" required>
+                                    <option value="hourly">Oraria (Hourly)</option>
+                                    <option value="daily" selected>Giornaliera (Daily)</option>
+                                    <option value="weekly">Settimanale (Weekly)</option>
+                                </select>
+                                <div class="form-text">Il periodo previsto con cui deve giungere l'email.</div>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="form-source-subject-regex" class="form-label">Espressione Regolare (Regex) per Oggetto Email</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control code-font" id="form-source-subject-regex" placeholder="Es: Backup \\[JOB-DB-01\\] - (Success|Failed)" required>
+                                    <button class="btn btn-outline-warning" type="button" id="btn-regex-generator">
+                                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Assistente Regex
+                                    </button>
+                                </div>
+                                <div class="form-text">Regex per catturare l'oggetto (es. <code>Backup \\[Server-Fisici\\] - (Success|Failed)</code>).</div>
+                            </div>
+                            
+                            <!-- Regex Assistant / Generator Panel (hidden by default) -->
+                            <div class="col-md-12 d-none" id="regex-assistant-panel">
+                                <div class="p-3 border rounded bg-dark-subtle border-warning-subtle">
+                                    <h6 class="text-warning mb-3 d-flex justify-content-between align-items-center">
+                                        <span><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Generatore Guidato Regex</span>
+                                        <button type="button" class="btn-close btn-close-white btn-sm" id="btn-close-regex-assistant" aria-label="Close" style="font-size: 0.75rem;"></button>
+                                    </h6>
+                                    
+                                    <!-- Generation section -->
+                                    <div class="mb-0">
+                                        <label class="form-label fs-7 fw-semibold text-secondary mb-1">Seleziona un'email recente per generare la Regex:</label>
+                                        <div class="d-flex gap-2">
+                                            <select class="form-select form-select-sm bg-dark text-white border-secondary" id="regex-helper-email-select">
+                                                <option value="">-- Carica email recenti per il mittente specificato --</option>
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-outline-info text-nowrap" id="btn-refresh-helper-emails">
+                                                <i class="fa-solid fa-arrows-rotate me-1"></i> Aggiorna
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Generated Options list -->
+                                        <div class="d-none mt-3" id="regex-options-container">
+                                            <label class="form-label fs-7 fw-semibold text-secondary">Scegli una Regex suggerita:</label>
+                                            <div class="d-flex flex-column gap-2" id="regex-options-list">
+                                                <!-- Dynamic options loaded here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Standalone Tester section (always visible) -->
+                            <div class="col-md-12">
+                                <label class="form-label fs-7 fw-semibold text-secondary d-flex justify-content-between align-items-center mb-2">
+                                    <span><i class="fa-solid fa-magnifying-glass me-1"></i> Anteprima Email Corrispondenti (Test Regex)</span>
+                                    <button type="button" class="btn btn-sm btn-warning px-2 py-0.5" id="btn-test-regex-run" style="font-size: 0.75rem;">
+                                        <i class="fa-solid fa-play me-1"></i> Testa Regex
+                                    </button>
+                                </label>
+                                <div class="text-muted fs-8 mb-2" id="regex-test-status">
+                                    Digita la regex o fai clic su "Testa Regex" per vedere l'anteprima delle email catturate.
+                                </div>
+                                <div class="regex-test-results rounded border border-secondary bg-black p-2" id="regex-test-results-list" style="max-height: 150px; overflow-y: auto; display: none;">
+                                    <!-- Dynamic test results -->
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" id="form-source-active" checked>
+                                    <label class="form-check-input-label ms-2" for="form-source-active">Monitoraggio
+                                        Attivo (Abilita avvisi per email mancanti)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                        <button type="submit" class="btn btn-warning" id="save-source-btn">Salva Sorgente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL/OFFCANVAS: HISTORY RUNS LOG -->
+    <div class="offcanvas offcanvas-end glass-offcanvas" tabindex="-1" id="runsOffcanvas"
+        aria-labelledby="runsOffcanvasLabel">
+        <div class="offcanvas-header border-bottom border-secondary-subtle">
+            <h5 class="offcanvas-title" id="runsOffcanvasLabel">
+                <i class="fa-solid fa-clock-rotate-left text-warning me-2"></i>
+                <span id="offcanvas-flow-name">Cronologia Backup</span>
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+                aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-4">
+                <p class="text-muted m-0 fs-7">Mostra le email catalogate negli ultimi 60 giorni per questa sorgente.
+                </p>
+                <div
+                    class="stats-mini-summary mt-2 d-flex gap-3 justify-content-between p-2 rounded bg-dark-subtle border border-secondary-subtle fs-7">
+                    <div><span class="text-muted">Media:</span> <strong id="offcanvas-stat-mean">-</strong></div>
+                    <div><span class="text-muted">Max Consentito:</span> <strong id="offcanvas-stat-max">-</strong>
+                    </div>
+                    <div><span class="text-muted">Deviaz. Std:</span> <strong id="offcanvas-stat-std">-</strong></div>
+                </div>
+            </div>
+
+            <!-- Log List -->
+            <div class="runs-list d-flex flex-column gap-3" id="offcanvas-runs-container">
+                <!-- Dynamic Run Items will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EMAIL DETAILS INSIDE BACKUP RUNS -->
+    <div class="modal fade" id="emailDetailModal" tabindex="-1" aria-labelledby="emailDetailModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="emailDetailModalLabel"><i
+                            class="fa-solid fa-envelope me-2 text-warning"></i>Dettaglio Email Backup</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="email-meta-header mb-3 pb-3 border-bottom border-secondary-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge" id="email-detail-status-badge">Successo</span>
+                            <span class="text-muted code-font fs-7" id="email-detail-date">--</span>
+                        </div>
+                        <h4 class="fs-5 fw-bold mb-1" id="email-detail-subject">--</h4>
+                        <div class="fs-7"><span class="text-muted">Da:</span> <span id="email-detail-from">--</span>
+                        </div>
+                    </div>
+                    <div class="email-body-content border rounded p-3 bg-dark-subtle" id="email-detail-body"
+                        style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 13px;">
+                        <!-- Email body loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CHANGELOG -->
+    <div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content changelog-modal-content">
+                <div class="modal-header py-3">
+                    <h5 class="modal-title" id="changelogModalLabel">
+                        <i class="fa-solid fa-bullhorn me-2 text-warning"></i>Novità e Aggiornamenti (Changelog)
+                    </h5>
+                    <button type="button" class="btn-close text-reset" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="changelog-modal-body">
+                    <div class="text-center py-5" id="changelog-spinner">
+                        <div class="spinner-border text-warning" role="status"></div>
+                        <p class="mt-2 text-muted small">Caricamento in corso delle ultime novità...</p>
+                    </div>
+                    <div id="changelog-content-area" class="d-none">
+                        <!-- Changelog HTML renderizzato dinamicamente qui -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-warning px-4 rounded-pill border-2 btn-sm fw-bold" data-bs-dismiss="modal">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+        <div id="backup-toast" class="toast glass-toast align-items-center text-white border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center">
+                    <i id="backup-toast-icon" class="fa-solid fa-circle-info me-2 fs-5"></i>
+                    <span id="backup-toast-message">--</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal per Grafici Fullscreen -->
+    <div id="chart-fullscreen-modal" class="modal-overlay" style="display: none; z-index: 100010;">
+        <div class="modal-window" style="max-width: 90%; width: 90%; height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h3 id="fullscreen-chart-title" class="m-0 fs-5 fw-bold"><i class="fa-solid fa-chart-line text-warning me-2"></i> Grafico</h3>
+                <button id="close-fullscreen-chart" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body flex-grow-1 p-4 d-flex align-items-center justify-content-center" style="position: relative; overflow: hidden; background: var(--bg-primary);">
+                <canvas id="fullscreen-chart-canvas" style="width: 100%; height: 100%; max-height: 70vh;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal per Dettaglio Email da Grafico -->
+    <div id="chart-details-modal" class="modal-overlay" style="display: none; z-index: 100020;">
+        <div class="modal-window" style="max-width: 800px; width: 95%; height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h3 id="chart-details-title" class="m-0 fs-5 fw-bold"><i class="fa-solid fa-envelope text-warning me-2"></i> Email Correlate</h3>
+                <button id="close-chart-details" class="btn btn-sm btn-danger">&times;</button>
+            </div>
+            <div class="modal-body p-3" style="overflow-y: auto; flex-grow: 1; background: var(--bg-primary);">
+                <div id="chart-details-loading" class="text-center py-5">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x text-warning mb-2"></i>
+                    <p class="text-muted">Caricamento dettagli email in corso...</p>
+                </div>
+                <div id="chart-details-empty" class="text-center py-5" style="display: none;">
+                    <i class="fa-solid fa-envelope-open fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">Nessuna email trovata per questo criterio.</p>
+                </div>
+                <div class="list-group" id="chart-details-list">
+                    <!-- Dettagli email inseriti dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Restart Countdown Overlay -->
+    <div id="server-restart-overlay" class="restart-overlay" style="display: none;">
+        <div class="restart-card">
+            <div class="restart-icon-wrapper animate-spin-pulse">
+                <i class="fa-solid fa-triangle-exclamation warning-icon"></i>
+            </div>
+            <h2 id="restart-title">Riavvio del Server</h2>
+            <p id="restart-description">Il server è in fase di manutenzione e verrà riavviato tra poco.</p>
+            
+            <div class="countdown-circle-container">
+                <svg class="countdown-svg" viewBox="0 0 80 80">
+                    <circle class="countdown-bg" cx="40" cy="40" r="35"></circle>
+                    <circle id="countdown-progress" class="countdown-progress-bar" cx="40" cy="40" r="35"></circle>
+                </svg>
+                <div id="countdown-text" class="countdown-value">30</div>
+            </div>
+            
+            <div class="restart-meta">
+                <span>Richiesto da: <strong id="restart-requester">-</strong></span>
+            </div>
+            <div class="restart-status-subtext" id="restart-status-subtext" style="display: none;"></div>
+            <button id="dismiss-restart-btn" class="btn btn-sm btn-outline-light w-100 mt-1" style="border-radius: 12px; font-size: 0.85rem;">
+                <i class="fa-solid fa-eye-slash me-1"></i> Nascondi avviso
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=7"></script>
+    <script src="backup/script_integrated.js"></script>
 </body>
 
 </html>

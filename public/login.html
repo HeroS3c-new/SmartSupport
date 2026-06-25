@@ -184,7 +184,7 @@
         </form>
 
         <div class="footer">
-            &copy; 2026 Maestrale
+            &copy; 2026 Maestrale | <span id="app-version"></span>
         </div>
     </div>
 
@@ -196,8 +196,17 @@
         const verifyMfaBtn = document.getElementById('verify-mfa-btn');
         const backToLogin = document.getElementById('back-to-login');
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get('redirectTo') || '/';
+
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (mfaStep.style.display === 'block') {
+                verifyMfaBtn.click();
+                return;
+            }
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
@@ -218,7 +227,7 @@
                         mfaStep.style.display = 'block';
                         document.getElementById('otp').focus();
                     } else {
-                        window.location.href = '/';
+                        window.location.href = redirectTo;
                     }
                 } else {
                     errorBox.textContent = data.message || 'Login fallito.';
@@ -228,6 +237,14 @@
                 console.error('Login error:', error);
                 errorBox.textContent = 'Errore di connessione al server.';
                 errorBox.style.display = 'block';
+            }
+        });
+
+        // Add Enter key listener for OTP field to submit MFA verification
+        document.getElementById('otp').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyMfaBtn.click();
             }
         });
 
@@ -245,7 +262,7 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    window.location.href = '/';
+                    window.location.href = redirectTo;
                 } else {
                     errorBox.textContent = data.message || 'Codice non valido.';
                     errorBox.style.display = 'block';
@@ -263,6 +280,17 @@
             credentialsStep.style.display = 'block';
             errorBox.style.display = 'none';
         });
+
+        // Carica la versione dell'applicazione
+        fetch('/api/version')
+            .then(res => res.json())
+            .then(data => {
+                const verSpan = document.getElementById('app-version');
+                if (verSpan && data.version) {
+                    verSpan.textContent = `v${data.version}`;
+                }
+            })
+            .catch(err => console.error('Errore nel recupero della versione:', err));
     </script>
 </body>
 

@@ -40,9 +40,15 @@ logger.addHandler(error_handler)
 
 
 # --- Configurazione ---
-MODEL_NAME = "roberta-base"
-TRAINING_DATA_FILE = "llm_training_data_bot_human.csv"
 OUTPUT_DIR = "./fine_tuned_llm_model_bot_human"
+
+# Se esiste già un modello addestrato, lo usiamo come punto di partenza per l'addestramento incrementale, altrimenti partiamo da roberta-base
+if os.path.exists(OUTPUT_DIR) and any(f for f in os.listdir(OUTPUT_DIR) if f != "checkpoint-*"):
+    MODEL_NAME = OUTPUT_DIR
+else:
+    MODEL_NAME = "roberta-base"
+
+TRAINING_DATA_FILE = "llm_training_data.csv"
 
 # --- 1. Caricamento e Preparazione del Dataset ---
 def load_dataset():
@@ -51,11 +57,16 @@ def load_dataset():
         if 'text' not in df.columns or 'category' not in df.columns:
             logger.error("Error: CSV must have 'text' and 'category' columns.")
             return None, None, None
-        # Crea una mappatura delle etichette e converte le etichette in interi
-        labels = df['category'].unique().tolist()
-        label2id = {label: i for i, label in enumerate(labels)}
-        id2label = {i: label for i, label in enumerate(labels)}
+        
+        # Forza la mappatura standard per evitare inversioni accidentali di etichette
+        label2id = {"Human": 0, "Bot": 1}
+        id2label = {0: "Human", 1: "Bot"}
+        
+        df.dropna(subset=['text', 'category'], inplace=True)
         df['label'] = df['category'].map(label2id)
+        df.dropna(subset=['label'], inplace=True)
+        df['label'] = df['label'].astype(int)
+        
         logger.info(f"Dataset loaded successfully. Found {len(df)} samples.")
         logger.info(f"Label mapping: {label2id}")
         return df, label2id, id2label
@@ -120,7 +131,7 @@ def main():
         num_train_epochs=3,          # Numero di epoche di addestramento
         per_device_train_batch_size=2, # Dimensione del batch per l'addestramento
         per_device_eval_batch_size=2,  # Dimensione del batch per la valutazione
-        warmup_steps=500,              # Numero di passaggi di riscaldamento
+        warmup_steps=10,               # Adattato per set di dati piccoli
         weight_decay=0.01,             # Forza del decadimento del peso
         logging_dir=log_dir,          # Directory per la memorizzazione dei log
         logging_steps=10,
@@ -142,8 +153,11 @@ def main():
     trainer.train()
     logger.info("--- Fine-Tuning Finished ---")
 
-    # Il Trainer salva automaticamente il modello migliore
-    logger.info(f"Best model saved to {OUTPUT_DIR}")
+    # Il Trainer carica il modello migliore alla fine, lo salviamo esplicitamente
+    logger.info(f"Saving fine-tuned model and tokenizer to {OUTPUT_DIR}")
+    model.save_pretrained(OUTPUT_DIR, safe_serialization=True)
+    tokenizer.save_pretrained(OUTPUT_DIR)
+    logger.info("--- Model and Tokenizer Saved Successfully ---")
 
 if __name__ == "__main__":
     main()

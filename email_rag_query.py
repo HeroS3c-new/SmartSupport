@@ -40,12 +40,14 @@ SYSTEM_PROMPT = (
 
 # Rifiuti espressi a parole, spesso con una citazione: non sono risposte.
 REFUSAL_PATTERN = re.compile(
-    r"non ho (?:informazioni|dati|trovato|elementi)"
+    r"non ho (?:altre |ulteriori )?(?:informazioni|dati|trovato|elementi)"
     r"|non trov(?:o|ato)\b|non posso\b"
     r"|non (?:sono|e'|è) in grado"
     r"|(?:le |nelle )?email non (?:contengono|riportano|indicano|specificano|menzionano)"
     r"|non (?:e'|è) (?:stat[oa] )?(?:specificat|indicat|menzionat|riportat)",
     re.IGNORECASE)
+# Una frase con la sua citazione: e' l'unita' minima di testo che si puo' verificare e mostrare.
+CITED_SEGMENT = re.compile(r'.*?\[E\d+\]\.?', re.DOTALL)
 # Frasi che parlano al modello invece che a un collega: restano fuori dal contesto.
 INJECTION_PATTERN = re.compile(
     r"[^.!?\n]*\b(?:ignora|ignorare|dimentica|disregard|ignore|forget)\b[^.!?\n]{0,60}"
@@ -173,6 +175,81 @@ def extract_terms(question):
 
 def contains_identifier(haystack, identifier):
     return re.search(rf'(?<!\w){re.escape(identifier)}(?!\w)', haystack) is not None
+
+
+MAIL_WORD = r'(?:e-?mail|mail|messagg[io])'
+LIST_INTENT = re.compile(
+    rf'\b(?:elenc\w*|lista|mostra\w*|visualizza\w*|dammi|ultim[aeio])\b.*\b{MAIL_WORD}\b', re.IGNORECASE)
+COUNT_INTENT = re.compile(rf'\bquant[ei]\b.*\b{MAIL_WORD}\b', re.IGNORECASE)
+DATE_PHRASES = re.compile(
+    r'\b(?:oggi|ieri|questa settimana|settimana scorsa|scorsa settimana|questo mese|mese scorso|scorso mese|ultim[ie] \d{1,3} giorni)\b',
+    re.IGNORECASE)
+NUMBER_WORDS = {'una': 1, 'due': 2, 'tre': 3, 'quattro': 4, 'cinque': 5, 'sei': 6, 'sette': 7, 'otto': 8, 'nove': 9, 'dieci': 10}
+LIST_WORDS = {
+    'elenca', 'elencami', 'elenco', 'lista', 'mostra', 'mostrami', 'visualizza', 'visualizzami', 'dammi', 'ultima', 'ultimo',
+    'ultime', 'ultimi', 'provenienti', 'proveniente', 'arrivata', 'arrivate', 'arrivati', 'ricevute', 'ricevuti', 'inviate',
+    'inviati', 'mandata', 'mandate', 'tutte', 'tutti', 'e-mail', 'mails', 'qual', 'dimmi',
+}
+DEFAULT_LIST_SIZE = 5
+MAX_LIST_SIZE = 20
+
+
+def _list_size(text):
+    match = re.search(rf'\b(\d{{1,3}}|{"|".join(NUMBER_WORDS)})\s+(?:\w+\s+)?{MAIL_WORD}\b', text) or re.search(
+        rf'\bultim[aeio]\s+(\d{{1,3}}|{"|".join(NUMBER_WORDS)})\b', text)
+    if match:
+        value = match.group(1)
+        return max(1, min(MAX_LIST_SIZE, NUMBER_WORDS.get(value) or int(value)))
+    return 1 if re.search(rf'\bultim[ao]\s+{MAIL_WORD}\b', text) else DEFAULT_LIST_SIZE
+
+
+def direct_answer(conn, question, filters):
+    """Elenchi e conteggi sono domande sui metadati: una query e' istantanea e non puo' sbagliare come un LLM.
+
+    Se resta un argomento ("le ultime email sul backup") la domanda passa alla ricerca normale.
+    """
+    is_count = COUNT_INTENT.search(question) is not None
+    if not is_count and not LIST_INTENT.search(question):
+        return None
+
+    filters = dict(filters)
+    text = DATE_PHRASES.sub(' ', question.lower())
+    if filters.get('sender'):
+        text = text.replace(filters['sender'], ' ')
+    else:
+        match = re.search(r"\b(?:da|from)\s+([a-zà-ù][a-zà-ù' .-]{2,40}?)\s*[?.!]?\s*$", text)
+        if match:
+            candidate = match.group(1).strip()
+            # Vale come mittente solo se esiste davvero: "email da leggere" non deve diventare un filtro.
+            if conn.execute('SELECT 1 FROM emails WHERE sender LIKE ? LIMIT 1', (f'%{candidate}%',)).fetchone():
+                filters['sender'] = candidate
+                text = text[:match.start()]
+
+    terms, _ = extract_terms(text)
+    if any(t not in LIST_WORDS and t not in NUMBER_WORDS and not t.isdigit() for t in terms):
+        return None
+
+    where, params = _filter_sql(filters)
+    where_sql = f'WHERE {where}' if where else ''
+    origin = f" da {filters['sender']}" if filters.get('sender') else ''
+    if is_count:
+        total = conn.execute(f'SELECT COUNT(*) AS n FROM emails e {where_sql}', params).fetchone()['n']
+        word = 'email indicizzata' if total == 1 else 'email indicizzate'
+        return {'answer': f'{total} {word}{origin}.', 'found': total > 0, 'sources': [], 'related': [], 'kind': 'count', 'filters': filters}
+
+    rows = conn.execute(
+        f'SELECT e.id, e.thread_id, e.subject, e.sender, e.date_ms, '
+        f'(SELECT text FROM chunks c WHERE c.email_id = e.id ORDER BY c.seq LIMIT 1) AS text '
+        f'FROM emails e {where_sql} ORDER BY e.date_ms DESC LIMIT ?', [*params, _list_size(text)]).fetchall()
+    if not rows:
+        return {'answer': f'Non ho trovato email{origin} nel periodo indicato.' if where else NOT_FOUND_ANSWER,
+                'found': False, 'sources': [], 'related': [], 'kind': 'list', 'filters': filters}
+    sources = [_source_payload(f'E{number}', {
+        'email_id': row['id'], 'thread_id': row['thread_id'], 'subject': row['subject'], 'sender': row['sender'],
+        'date_ms': row['date_ms'], 'text': row['text'] or '', 'score': None,
+    }) for number, row in enumerate(rows, start=1)]
+    count = 'Ultima email' if len(rows) == 1 else f'Ultime {len(rows)} email'
+    return {'answer': f'{count}{origin}, dalla più recente:', 'found': True, 'sources': sources, 'related': [], 'kind': 'list', 'filters': filters}
 
 
 def _bm25_search(conn, terms, allowed_ids, top_n=CANDIDATES):
@@ -385,18 +462,22 @@ def finalize_answer(raw_answer, contexts):
     # I modelli piccoli a volte imitano il formato del contesto: resta solo la frase.
     raw_answer = re.sub(r'</?\s*email\b[^>]*>|^\s*=+[^\n]*=+\s*$|^\s*Oggetto:[^\n]*$|\(E\d+\)\s*-?\s*|\bFont[ei]:\s*(?=\[E)', '',
                         raw_answer or '', flags=re.IGNORECASE | re.MULTILINE).strip()
-    if not raw_answer or NOT_FOUND_TOKEN in raw_answer or REFUSAL_PATTERN.search(raw_answer):
-        return {'answer': NOT_FOUND_ANSWER, 'found': False, 'sources': [], 'related': []}
+    if not raw_answer or NOT_FOUND_TOKEN in raw_answer:
+        return {'answer': NOT_FOUND_ANSWER, 'found': False, 'sources': [], 'related': related}
 
+    # Ogni frase vale da sola: resta se cita una fonte reale e non e' un rifiuto.
     valid = {f'E{i}' for i in range(1, len(contexts) + 1)}
-    cited = []
-    for label in re.findall(r'\[(E\d+)\]', raw_answer):
-        if label in valid and label not in cited:
-            cited.append(label)
-    if not cited:
-        return {'answer': UNVERIFIED_ANSWER, 'found': False, 'sources': [], 'related': related}
+    segments = [s.strip() for s in CITED_SEGMENT.findall(raw_answer)]
+    kept = [s for s in segments if not REFUSAL_PATTERN.search(s) and set(re.findall(r'\[(E\d+)\]', s)) <= valid]
+    if not kept:
+        refused = REFUSAL_PATTERN.search(raw_answer) is not None
+        return {'answer': NOT_FOUND_ANSWER if refused else UNVERIFIED_ANSWER, 'found': False, 'sources': [], 'related': related}
 
-    answer = re.sub(r'\s*\[(E\d+)\]', lambda m: m.group(0) if m.group(1) in valid else '', raw_answer).strip()
+    answer = ' '.join(kept)
+    cited = []
+    for label in re.findall(r'\[(E\d+)\]', answer):
+        if label not in cited:
+            cited.append(label)
     return {
         'answer': answer,
         'found': True,
@@ -411,6 +492,10 @@ def ask(conn, index, embedder, question, filters=None, llm=call_llm, top_k=TOP_K
     merged.update({k: v for k, v in (filters or {}).items() if v not in (None, '')})
 
     started = time.perf_counter()
+    direct = direct_answer(conn, question, merged)
+    if direct:
+        return {**direct, 'timings': {'retrieval_ms': round((time.perf_counter() - started) * 1000), 'llm_ms': 0}, 'llm_available': True}
+
     contexts = retrieve(conn, index, embedder, question, merged, top_k=top_k, min_score=min_score)
     retrieval_ms = round((time.perf_counter() - started) * 1000)
     timings = {'retrieval_ms': retrieval_ms, 'llm_ms': 0}
@@ -433,14 +518,21 @@ def ask(conn, index, embedder, question, filters=None, llm=call_llm, top_k=TOP_K
 
 
 def ask_stream(conn, index, embedder, question, filters=None, llm=stream_llm, top_k=TOP_K, min_score=MIN_SCORE, now=None):
-    """Come ask, ma a eventi: prima le email trovate, poi il testo, infine il verdetto sulle citazioni.
+    """Come ask, ma a eventi: prima le email trovate, poi le frasi gia' verificate, infine il riepilogo.
 
-    Il verdetto arriva per ultimo e puo' ritirare un testo gia' mostrato se non cita fonti valide.
+    Una frase si mostra solo quando e' completa della sua citazione: quello che compare non viene poi ritirato.
     """
     merged = parse_question_filters(question, now)
     merged.update({k: v for k, v in (filters or {}).items() if v not in (None, '')})
 
     started = time.perf_counter()
+    direct = direct_answer(conn, question, merged)
+    if direct:
+        timings = {'retrieval_ms': round((time.perf_counter() - started) * 1000), 'first_token_ms': None, 'llm_ms': 0}
+        yield {'type': 'sources', 'sources': direct['sources'], 'filters': direct['filters']}
+        yield {'type': 'final', **{k: v for k, v in direct.items() if k != 'filters'}, 'timings': timings, 'llm_available': True}
+        return
+
     contexts = retrieve(conn, index, embedder, question, merged, top_k=top_k, min_score=min_score)
     timings = {'retrieval_ms': round((time.perf_counter() - started) * 1000), 'first_token_ms': None, 'llm_ms': 0}
     candidates = [_source_payload(f'E{i}', c) for i, c in enumerate(contexts, start=1)]
@@ -455,19 +547,24 @@ def ask_stream(conn, index, embedder, question, filters=None, llm=stream_llm, to
     parts = []
     try:
         messages = build_messages(question, compress_contexts(question, contexts, embedder))
-        # Il token di "non trovato" e i tag di ragionamento non devono comparire a video: si trattiene l'inizio.
-        held = ''
+        pending = ''
+        valid = {f'E{i}' for i in range(1, len(contexts) + 1)}
         for token in llm(messages):
             if timings['first_token_ms'] is None:
                 timings['first_token_ms'] = round((time.perf_counter() - started) * 1000)
             parts.append(token)
-            if held is not None:
-                held += token
-                stripped = held.lstrip()
-                if NOT_FOUND_TOKEN.startswith(stripped[:len(NOT_FOUND_TOKEN)]) or stripped.startswith('<') or not stripped:
-                    continue
-                token, held = held, None
-            yield {'type': 'token', 'text': token}
+            pending += token
+            if NOT_FOUND_TOKEN in pending:
+                break
+            match = CITED_SEGMENT.match(pending)
+            if not match:
+                continue
+            segment, pending = match.group(0), pending[match.end():]
+            # Un rifiuto chiude la risposta: inutile far lavorare la CPU su altro testo.
+            if REFUSAL_PATTERN.search(segment):
+                break
+            if set(re.findall(r'\[(E\d+)\]', segment)) <= valid:
+                yield {'type': 'token', 'text': segment}
     except (requests.RequestException, KeyError, IndexError, ValueError):
         yield {'type': 'final', 'answer': "L'assistente non e' disponibile al momento. Queste sono le email piu' pertinenti.",
                'found': False, 'sources': [], 'related': candidates, 'timings': timings, 'llm_available': False}

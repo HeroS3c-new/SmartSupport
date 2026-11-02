@@ -98,6 +98,7 @@
             if (!state.started) {
                 state.started = true;
                 state.statusText = 'Sto scrivendo…';
+                turn.answer.classList.remove('assistant-answer-muted');
             }
             state.text += event.text;
             renderAnswer(turn.answer, state.text, state.candidates);
@@ -105,8 +106,8 @@
             state.done = true;
             turn.answer.classList.toggle('assistant-answer-muted', !event.found);
             renderAnswer(turn.answer, event.answer, event.sources);
-            renderSources(turn.sources, 'Fonti', event.sources);
-            renderSources(turn.related, 'Altre email collegate', event.related || []);
+            renderSources(turn.sources, event.kind === 'list' ? 'Email' : 'Fonti', event.sources);
+            renderSources(turn.related, event.found ? 'Altre email collegate' : 'Email forse collegate', event.related || []);
         } else if (event.type === 'error') {
             throw new Error(event.message);
         }

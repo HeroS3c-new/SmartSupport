@@ -13,7 +13,7 @@ import numpy as np
 
 from email_rag_index import chunk_text, clean_email_body, open_db, prepare_email, sync_index
 from email_rag_query import (NOT_FOUND_ANSWER, VectorIndex, _llm_request, ask, ask_stream, assert_local_url, build_messages,
-                             citation_grammar, compress_context, extract_terms, finalize_answer, parse_question_filters, retrieve)
+                             citation_grammar, compress_context, direct_answer, extract_terms, finalize_answer, parse_question_filters, retrieve)
 
 NOW = datetime.datetime(2026, 11, 4, 12, 0)  # mercoledi'
 NOW_MS = int(NOW.timestamp() * 1000)
@@ -402,6 +402,76 @@ class EndToEndTests(RagBase):
 
     def test_short_context_is_not_touched(self):
         self.assertEqual(compress_context('x', {'text': 'Breve.'}, self.embedder), 'Breve.')
+
+    def fail_llm(self, *_):
+        self.fail('LLM chiamato per una domanda sui metadati')
+
+    def ask_direct(self, question):
+        return ask(self.conn, self.index, self.embedder, question, llm=self.fail_llm, now=NOW)
+
+    def seed_senders(self):
+        self.sync([make_email(f'a{i}', f'Pratica {i}', f'Testo della pratica numero {i} ben dettagliato.',
+                              sender='Amministrazione <amministrazione@azienda.it>', age_days=[5, 1, 3, 2, 4][i]) for i in range(5)]
+                  + [make_email('b', 'Altro', 'Mail di un altro mittente qualsiasi.', sender='Bruno Neri <bruno@beta.it>', age_days=0)])
+
+    def test_list_is_newest_first_without_llm(self):
+        self.seed_senders()
+        result = self.ask_direct('elencami le ultime 3 email provenienti da amministrazione@azienda.it')
+        self.assertTrue(result['found'])
+        self.assertEqual([s['email_id'] for s in result['sources']], ['a1', 'a3', 'a2'])
+
+    def test_last_email_returns_one(self):
+        self.seed_senders()
+        self.assertEqual([s['email_id'] for s in self.ask_direct("qual e' l'ultima email da bruno@beta.it")['sources']], ['b'])
+
+    def test_number_word_and_sender_name(self):
+        self.seed_senders()
+        self.assertEqual(len(self.ask_direct('mostrami le ultime due mail da Amministrazione')['sources']), 2)
+
+    def test_list_with_date_filter(self):
+        self.seed_senders()
+        ids = [s['email_id'] for s in self.ask_direct('elenca le email di ieri')['sources']]
+        self.assertEqual(ids, ['a1'])
+
+    def test_count_without_llm(self):
+        self.seed_senders()
+        result = self.ask_direct('quante email da amministrazione@azienda.it?')
+        self.assertIn('5 email', result['answer'])
+
+    def test_unknown_sender_list_is_empty(self):
+        self.seed_senders()
+        self.assertFalse(self.ask_direct('elenca le ultime 3 email da nessuno@niente.it')['found'])
+
+    def test_topic_question_is_not_a_list(self):
+        self.seed_senders()
+        self.assertIsNone(direct_answer(self.conn, 'mostrami le ultime email sul backup del server', {}))
+        self.assertIsNone(direct_answer(self.conn, 'quando scade il certificato?', {}))
+
+    def test_stream_list_has_no_tokens(self):
+        self.seed_senders()
+        events = list(ask_stream(self.conn, self.index, self.embedder, 'elenca le ultime 2 email da bruno@beta.it',
+                                 llm=self.fail_llm, now=NOW))
+        self.assertEqual([e['type'] for e in events], ['sources', 'final'])
+        self.assertEqual(events[0]['sources'][0]['email_id'], 'b')
+
+    def test_stream_shows_only_complete_cited_sentences(self):
+        self.sync([make_email('fw', 'Firewall Bologna', 'Il firewall della sede di Bologna ha perso la VPN stanotte.')])
+        events = self.stream('firewall Bologna VPN sede', ['VPN ', 'persa ', '[E1]. ', 'Coda ', 'senza fonte'])
+        self.assertEqual(''.join(e['text'] for e in events if e['type'] == 'token'), 'VPN persa [E1].')
+        self.assertEqual(events[-1]['answer'], 'VPN persa [E1].')
+
+    def test_stream_preamble_refusal_shows_nothing_and_keeps_emails(self):
+        self.sync([make_email('fw', 'Firewall Bologna', 'Il firewall della sede di Bologna ha perso la VPN stanotte.')])
+        events = self.stream('firewall Bologna VPN sede', ['Non ', 'ho ', 'informazioni ', 'su questo ', '[E1].'])
+        self.assertEqual([e for e in events if e['type'] == 'token'], [])
+        self.assertEqual(events[-1]['answer'], NOT_FOUND_ANSWER)
+        self.assertEqual(events[-1]['related'][0]['email_id'], 'fw')
+
+    def test_refusal_sentence_is_dropped_from_good_answer(self):
+        self.sync([make_email('fw', 'Firewall Bologna', 'Il firewall della sede di Bologna ha perso la VPN stanotte.')])
+        contexts = retrieve(self.conn, self.index, self.embedder, 'firewall Bologna VPN sede', min_score=0.2)
+        result = finalize_answer('VPN persa [E1]. Non ho altre informazioni [E1].', contexts)
+        self.assertEqual(result['answer'], 'VPN persa [E1].')
 
     def test_llm_down_still_returns_related_emails(self):
         import requests

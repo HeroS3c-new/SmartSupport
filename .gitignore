@@ -41,6 +41,14 @@ out_people.txt
 projects_list.txt
 test_persistence.txt
 
+# Assistente email: l'indice contiene il testo delle email
+email_rag.db
+email_rag.db-*
+rag_eval_results/
+.venv_rag/
+llama_cpp/
+models/rag/
+
 # Trained models (large directories)
 fine_tuned_llm_model_*/
 

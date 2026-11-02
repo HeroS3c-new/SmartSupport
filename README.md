@@ -104,6 +104,31 @@ Questo imposta la variabile d'ambiente `MAESKIMMER_MODE=debug`, abilitando le po
 
 ---
 
+## Assistente AI sulle email
+
+Risponde a domande sulla casella citando le email usate come fonte. Gira solo in locale, su CPU, e nessun dato esce dal server.
+
+```bash
+# Una sola volta: venv dedicato, llama.cpp e modelli (circa 2,1 GB)
+powershell -ExecutionPolicy Bypass -File setup_email_rag.ps1
+# Prima indicizzazione (circa 20 minuti con 5.800 email)
+.venv_rag\Scripts\python.exe email_rag_index.py
+```
+
+`start_email_rag.ps1` avvia `llama-server` (porta 8081) e `email_rag_server.py` (porta 5009), entrambi solo su `127.0.0.1`, con i log in `logs/email_rag/`. Lo richiama anche `start_servers.bat`, ma al boot i servizi partono dall'attività pianificata `AvvioMaeSkimmerTutti`, che non usa quel file: per l'avvio automatico dell'assistente esegui una volta `install_email_rag_autostart.ps1` da una PowerShell come amministratore. Il pulsante **Assistente** compare solo se il servizio risponde. Servono circa 3 GB di RAM per il modello e picchi di 1,2 GB durante le sincronizzazioni.
+
+| Variabile | Default | Effetto |
+|---|---|---|
+| `RAG_RETENTION_DAYS` | 90 | Per quanti giorni l'indice conserva le email (la cache solo 7) |
+| `RAG_MIN_SCORE` | 0.83 | Soglia di pertinenza: sotto, l'LLM non viene chiamato |
+| `RAG_TOP_K` | 3 | Email passate al modello |
+| `RAG_MAX_CONTEXT_CHARS` | 400 | Testo massimo per fonte: meno testo, risposte più rapide |
+| `RAG_SYNC_MINUTES` | 10 | Frequenza della sincronizzazione |
+
+`email_rag.db` contiene il testo delle email: va protetto come `email_cache.json` e non va versionato. Limiti: niente allegati, conteggi ("quante email…") o domande di approfondimento. Test: `python -m unittest test_email_rag`.
+
+---
+
 ## Funzionamento Tecnico
 
 1. **Sincronizzazione**: `index.js` esegue un polling asincrono su Gmail ogni 15 secondi, archiviando le email lette e non lette in `email_cache.json` usando un lock asincrono (`cacheLock`) per evitare corruzioni.

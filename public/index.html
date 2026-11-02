@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="style.css?v=5">
     <link rel="stylesheet" href="backup/style.css">
     <link rel="stylesheet" href="redmine.css">
+    <link rel="stylesheet" href="assistant.css?v=2">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -2189,6 +2190,28 @@
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="script.js?v=7"></script>
     <script src="backup/script_integrated.js"></script>
+
+    <button id="toggle-assistant-panel" type="button" class="d-none" title="Assistente AI" aria-label="Apri l'assistente AI"
+        aria-controls="assistant-panel" aria-expanded="false">
+        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+    </button>
+    <aside id="assistant-panel" aria-label="Assistente AI" aria-hidden="true">
+        <div class="assistant-header">
+            <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Assistente</h2>
+            <button id="assistant-close" type="button" class="btn-close" aria-label="Chiudi assistente"></button>
+        </div>
+        <div id="assistant-log" aria-live="polite">
+            <p class="assistant-empty">Fai una domanda sulle email, ad esempio: «Qual è lo stato del firewall di Bologna?» o «Cosa ha scritto mario@cliente.it la settimana scorsa?»</p>
+        </div>
+        <form id="assistant-form" autocomplete="off">
+            <input id="assistant-input" class="form-control" type="text" maxlength="500"
+                placeholder="Chiedi qualcosa sulle email…" aria-label="Domanda per l'assistente">
+            <button id="assistant-submit" class="btn btn-primary" type="submit">Chiedi</button>
+            <button id="assistant-stop" class="btn btn-outline-secondary d-none" type="button">Ferma</button>
+        </form>
+        <div id="assistant-index-info"></div>
+    </aside>
+    <script src="assistant.js?v=1"></script>
 </body>
 
 </html>

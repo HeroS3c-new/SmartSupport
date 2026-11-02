@@ -7423,6 +7423,36 @@ app.all(['/autoblock/', '/autoblock/*splat'], isAuthenticated, async (req, res) 
 });
 
 // -----------------------------
+// Proxy per l'assistente AI sulle email (Porta 5009, solo locale)
+// -----------------------------
+app.all('/api/assistant/*splat', isAuthenticated, async (req, res) => {
+    const targetUrl = `http://127.0.0.1:5009${req.path}`;
+
+    try {
+        const proxyResponse = await axios({
+            method: req.method,
+            url: targetUrl,
+            data: req.method === 'GET' ? undefined : req.body,
+            // Una risposta su CPU richiede decine di secondi: il default globale di 15s non basta.
+            timeout: 200000,
+            responseType: 'stream',
+            validateStatus: () => true
+        });
+        res.status(proxyResponse.status);
+        res.set('Content-Type', proxyResponse.headers['content-type'] || 'application/json');
+        res.set('Cache-Control', 'no-cache');
+        res.flushHeaders();
+        // Se l'utente chiude il pannello, la generazione sulla CPU si ferma invece di proseguire a vuoto.
+        res.on('close', () => proxyResponse.data.destroy());
+        proxyResponse.data.on('error', () => res.end());
+        proxyResponse.data.pipe(res);
+    } catch (error) {
+        logger.error(`Errore durante il proxy verso l'assistente (${targetUrl}):`, error.message);
+        res.status(503).json({ message: "L'assistente non e' disponibile al momento." });
+    }
+});
+
+// -----------------------------
 // Logica di Riaddestramento Modello Email e Schedulazione Giornaliera
 // -----------------------------
 
